@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//root/Projects/github/apimgr/**)",
+      "Bash(go mod:*)",
+      "Bash(go build:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(tree:*)",
+      "Bash(wc:*)",
+      "Bash(./anime --version)",
+      "Bash(go get:*)",
+      "Read(//tmp/**)",
+      "Bash(xargs -I {} sh -c 'echo \"\"\"\"=== {} ===\"\"\"\" && head -20 {} && echo \"\"\"\"\"\"\"\"')",
+      "Bash(find:*)",
+      "Bash(cat:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

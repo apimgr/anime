@@ -1,0 +1,16 @@
+{
+  "name": "Anime Quotes API",
+  "short_name": "Anime Quotes",
+  "description": "A simple API for anime quotes",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#0066cc",
+  "icons": [
+    {
+      "src": "/static/images/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

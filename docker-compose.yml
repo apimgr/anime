@@ -1,0 +1,47 @@
+# Production Docker Compose Configuration
+# Uses ./rootfs for persistent storage
+# External port: 172.17.0.1:64180:80 (Docker bridge network)
+
+services:
+  anime:
+    image: ghcr.io/apimgr/anime:latest
+    container_name: anime
+    restart: unless-stopped
+
+    environment:
+      - CONFIG_DIR=/config
+      - DATA_DIR=/data
+      - LOGS_DIR=/logs
+      - PORT=80
+      - ADDRESS=::
+      - DB_PATH=/data/db/anime.db
+
+    volumes:
+      - ./rootfs/config/anime:/config
+      - ./rootfs/data/anime:/data
+      - ./rootfs/logs/anime:/logs
+
+    ports:
+      - "172.17.0.1:64180:80"
+
+    networks:
+      - anime
+
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/anime", "--status"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+networks:
+  anime:
+    name: anime
+    external: false
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+        - subnet: fd00::/64

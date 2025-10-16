@@ -1,0 +1,43 @@
+# Binaries
+binaries/
+releases/
+*.exe
+*.dll
+*.so
+*.dylib
+anime
+
+# Test binary
+*.test
+
+# Output
+*.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+rootfs/
+
+# Config and data
+*.db
+*.log
+config/
+data/
+logs/
+
+# Temporary
+/tmp/
+*.tmp

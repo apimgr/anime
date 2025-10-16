@@ -1,0 +1,84 @@
+name: Build and Release Binaries
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  schedule:
+    - cron: '0 3 1 * *'  # Monthly on 1st at 3 AM UTC
+  workflow_dispatch:
+
+env:
+  PROJECTNAME: anime
+  PROJECTORG: apimgr
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Run tests
+        run: make test
+
+  build-and-release:
+    name: Build Binaries and Create Release
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Read version from release.txt
+        id: version
+        run: |
+          VERSION=$(cat release.txt)
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Building version: ${VERSION}"
+
+      - name: Build binaries for all platforms
+        run: make build
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+
+      - name: List release artifacts
+        run: |
+          echo "Contents of releases/ directory:"
+          ls -lh releases/
+
+      - name: Delete existing release if exists
+        run: |
+          gh release delete ${{ steps.version.outputs.VERSION }} -y || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Create GitHub release
+        run: |
+          gh release create ${{ steps.version.outputs.VERSION }} \
+            ./releases/* \
+            --title "${{ steps.version.outputs.VERSION }}" \
+            --notes "Release ${{ steps.version.outputs.VERSION }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ steps.version.outputs.VERSION }}
+          path: releases/*
+          retention-days: 90
