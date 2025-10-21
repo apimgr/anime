@@ -11,9 +11,6 @@ import (
 
 	"github.com/apimgr/anime/src/anime"
 	"github.com/apimgr/anime/src/database"
-	"github.com/apimgr/anime/src/geoip"
-	"github.com/apimgr/anime/src/paths"
-	"github.com/apimgr/anime/src/scheduler"
 	"github.com/apimgr/anime/src/server"
 )
 
@@ -57,18 +54,6 @@ func main() {
 
 	log.Printf("Loaded %d anime quotes", animeService.GetTotalQuotes())
 
-	// Get config directory for GeoIP databases
-	configDir := paths.GetConfigDir()
-
-	// Initialize GeoIP service
-	log.Println("Initializing GeoIP service...")
-	geoipService, err := geoip.NewService(configDir)
-	if err != nil {
-		log.Printf("Warning: Failed to initialize GeoIP service: %v", err)
-		log.Printf("GeoIP lookups will not be available")
-		geoipService = nil
-	}
-
 	// Initialize database (optional - can be nil for development)
 	var db *database.DB
 	if err := os.MkdirAll(*dataDir, 0755); err != nil {
@@ -84,27 +69,12 @@ func main() {
 		}
 	}
 
-	// Initialize scheduler for GeoIP database updates
-	sched := scheduler.New()
-	if geoipService != nil {
-		// Schedule weekly updates (Sunday at 3:00 AM)
-		err = sched.AddTask("geoip-update", "0 3 * * 0", func() error {
-			return geoipService.UpdateDatabases()
-		})
-		if err != nil {
-			log.Printf("Warning: Failed to schedule GeoIP updates: %v", err)
-		} else {
-			log.Println("Scheduled weekly GeoIP database updates (Sunday 3:00 AM)")
-			sched.Start()
-		}
-	}
-
 	// Setup signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	// Create and start HTTP server
-	srv, err := server.NewServer(animeService, geoipService, db, *port, *address)
+	srv, err := server.NewServer(animeService, db, *port, *address)
 	if err != nil {
 		log.Fatalf("Failed to create server: %v", err)
 	}
@@ -121,10 +91,6 @@ func main() {
 		log.Fatalf("Server failed: %v", err)
 	case sig := <-sigChan:
 		log.Printf("Received signal %v, shutting down...", sig)
-		sched.Stop()
-		if geoipService != nil {
-			geoipService.Close()
-		}
 		log.Println("Shutdown complete")
 	}
 }

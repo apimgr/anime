@@ -1,21 +1,69 @@
 {
+  "model": "sonnet[1m]",
   "permissions": {
     "allow": [
-      "Read(//root/Projects/github/apimgr/**)",
-      "Bash(go mod:*)",
-      "Bash(go build:*)",
-      "Bash(curl:*)",
-      "Bash(pkill:*)",
+      "Read(**)",
+      "Write(**)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "Bash(mkdir:*)",
       "Bash(tree:*)",
-      "Bash(wc:*)",
-      "Bash(./anime --version)",
-      "Bash(go get:*)",
-      "Read(//tmp/**)",
-      "Bash(xargs -I {} sh -c 'echo \"\"\"\"=== {} ===\"\"\"\" && head -20 {} && echo \"\"\"\"\"\"\"\"')",
+      "Bash(go:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(echo:*)",
+      "Bash(make:*)",
       "Bash(find:*)",
-      "Bash(cat:*)"
+      "Bash(grep:*)",
+      "Bash(awk:*)",
+      "Bash(sed:*)",
+      "Bash(cat:*)",
+      "Bash(chmod:*)",
+      "Bash(chown:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Bash(incus:*)",
+      "Bash(git:*)",
+      "Bash(pkill:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(cp:*)",
+      "Bash(ls:*)",
+      "Bash(pwd:*)",
+      "Bash(cd:*)",
+      "Bash(head:*)",
+      "Bash(timeout:*)",
+      "Bash(do:*)",
+      "Bash(ln:*)",
+      "Bash(test:*)",
+      "Bash(do)",
+      "Bash(sort:*)",
+      "Bash(paste:*)",
+      "Bash(*:*)"
     ],
-    "deny": [],
+    "deny": [
+      "Bash(git commit:*)"
+    ],
     "ask": []
+  },
+  "preferences": {
+    "auto_commit": false
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write(**)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if grep -qi 'anthropic\\|claude' \"$file\" 2>/dev/null; then echo 'Error: File contains vendor names (Anthropic/Claude)' >&2; exit 1; fi"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "MAX_THINKING_TOKENS": "1000"
   }
 }
+

@@ -6,12 +6,7 @@ require (
 	github.com/go-chi/httprate v0.14.1
 	github.com/gorilla/mux v1.8.1
 	github.com/mattn/go-sqlite3 v1.14.22
-	github.com/oschwald/geoip2-golang v1.13.0
 	golang.org/x/crypto v0.21.0
 )
 
-require (
-	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/oschwald/maxminddb-golang v1.13.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
-)
+require github.com/cespare/xxhash/v2 v2.3.0 // indirect

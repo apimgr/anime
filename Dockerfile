@@ -46,7 +46,15 @@ RUN chmod +x /usr/local/bin/anime
 
 # Environment variables
 ENV PORT=80 \
-    ADDRESS=0.0.0.0
+    CONFIG_DIR=/config \
+    DATA_DIR=/data \
+    LOGS_DIR=/logs \
+    ADDRESS=0.0.0.0 \
+    DB_PATH=/data/db/anime.db
+
+# Create directories
+RUN mkdir -p /config /data /data/db /logs && \
+    chown -R 65534:65534 /config /data /logs
 
 # Metadata labels (OCI standard)
 LABEL org.opencontainers.image.created="${BUILD_DATE}" \
@@ -64,6 +72,9 @@ LABEL org.opencontainers.image.created="${BUILD_DATE}" \
 
 # Expose default port
 EXPOSE 80
+
+# Create mount points for volumes
+VOLUME ["/config", "/data", "/logs"]
 
 # Run as non-root user (nobody)
 USER 65534:65534

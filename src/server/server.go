@@ -10,7 +10,6 @@ import (
 
 	"github.com/apimgr/anime/src/anime"
 	"github.com/apimgr/anime/src/database"
-	"github.com/apimgr/anime/src/geoip"
 	"github.com/gorilla/mux"
 )
 
@@ -18,7 +17,6 @@ import (
 type Server struct {
 	router          *mux.Router
 	animeService    *anime.Service
-	geoipService    *geoip.Service
 	db              *database.DB
 	settingsManager *SettingsManager
 	port            string
@@ -27,7 +25,7 @@ type Server struct {
 }
 
 // NewServer creates a new HTTP server
-func NewServer(animeService *anime.Service, geoipService *geoip.Service, db *database.DB, port, address string) (*Server, error) {
+func NewServer(animeService *anime.Service, db *database.DB, port, address string) (*Server, error) {
 	// Initialize templates
 	if err := initTemplates(); err != nil {
 		return nil, fmt.Errorf("failed to initialize templates: %w", err)
@@ -39,7 +37,6 @@ func NewServer(animeService *anime.Service, geoipService *geoip.Service, db *dat
 	s := &Server{
 		router:          mux.NewRouter(),
 		animeService:    animeService,
-		geoipService:    geoipService,
 		db:              db,
 		settingsManager: settingsManager,
 		port:            port,
@@ -79,10 +76,6 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/quotes", s.handleAllQuotes).Methods("GET")
 	api.HandleFunc("/health", s.handleHealth).Methods("GET")
 
-	// GeoIP routes (public)
-	api.HandleFunc("/geoip", s.handleGeoIPRequest).Methods("GET")
-	api.HandleFunc("/geoip/{ip}", s.handleGeoIPLookup).Methods("GET")
-
 	// Admin API routes (protected) with strictest rate limiting
 	adminAPI := s.router.PathPrefix("/api/v1/admin").Subrouter()
 	adminAPI.Use(adminRateLimitMiddleware()) // Admin-specific rate limit (most restrictive)
@@ -93,7 +86,6 @@ func (s *Server) setupRoutes() {
 	adminAPI.HandleFunc("/settings/import", s.handleAdminSettingsImport).Methods("POST")
 	adminAPI.HandleFunc("/quotes", s.handleAdminQuotes).Methods("GET", "POST", "PUT", "DELETE")
 	adminAPI.HandleFunc("/stats", s.handleAdminStats).Methods("GET")
-	adminAPI.HandleFunc("/geoip/update", s.handleGeoIPUpdate).Methods("POST")
 
 	// Admin Web UI routes
 	s.router.HandleFunc("/admin/settings", s.handleAdminSettingsPage).Methods("GET")
@@ -160,8 +152,6 @@ func (s *Server) Start() error {
 	log.Printf("  GET /api/v1/random       - Get a random quote")
 	log.Printf("  GET /api/v1/quotes       - Get all quotes")
 	log.Printf("  GET /api/v1/health       - Health check")
-	log.Printf("  GET /api/v1/geoip        - Lookup request IP")
-	log.Printf("  GET /api/v1/geoip/{ip}   - Lookup specific IP")
 	log.Printf("")
 	log.Printf("Access the web UI at: http://%s", displayURL)
 
