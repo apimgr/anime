@@ -55,6 +55,7 @@ The Anime Quotes API is a lightweight, production-ready REST API that serves ove
 **This project follows the complete SPEC.md** located at `/root/Projects/github/apimgr/SPEC.md` (9592 lines).
 
 **Read SPEC.md Before:**
+
 - Making any architectural changes
 - Implementing new features
 - Modifying build/deployment processes
@@ -63,7 +64,9 @@ The Anime Quotes API is a lightweight, production-ready REST API that serves ove
 ### AI Assistant Guidelines
 
 **MUST Follow:**
+
 1. **Build with Docker ONLY** - Never build on host OS
+
    ```bash
    # Correct
    make build
@@ -74,6 +77,7 @@ The Anime Quotes API is a lightweight, production-ready REST API that serves ove
    ```
 
 2. **Test in Containers** - Priority: Incus > Docker > Host OS
+
    ```bash
    # Preferred
    incus launch images:alpine/3.19 test-alpine
@@ -96,11 +100,13 @@ The Anime Quotes API is a lightweight, production-ready REST API that serves ove
 ### Build Requirements
 
 **Static Binary (MANDATORY):**
+
 ```bash
 CGO_ENABLED=0 go build -ldflags "-w -s" ./src
 ```
 
 **Multi-Platform Builds:**
+
 - Linux: amd64, arm64
 - Windows: amd64, arm64
 - macOS: amd64, arm64
@@ -116,7 +122,7 @@ CGO_ENABLED=0 go build -ldflags "-w -s" ./src
 
 - **Language**: Go 1.23
 - **Router**: Gorilla Mux
-- **Database**: SQLite3 (optional, for admin features)
+- **Database**: SQLite3 (for admin features/settings)
 - **Rate Limiting**: go-chi/httprate
 - **Authentication**: Basic Auth + Bearer tokens (bcrypt hashed)
 
@@ -277,24 +283,28 @@ anime (17MB static binary)
 ### Core Features (Implemented)
 
 ✅ **Quote API**
+
 - Random quote endpoint
 - Get all quotes endpoint
 - In-memory data structure (fast lookups)
 - 2000+ curated quotes from various anime
 
 ✅ **Web Interface**
+
 - Dark theme by default (light mode toggle)
 - Responsive design (mobile-friendly)
 - Homepage with quote display
 - Admin panel UI
 
 ✅ **Admin Panel**
+
 - Basic authentication (username/password)
 - Settings management
 - Live configuration reload (no restart needed)
 - Admin credentials stored in SQLite
 
 ✅ **Security**
+
 - Rate limiting (100 global, 50 API, 10 admin req/s)
 - Security headers (X-Frame-Options, CSP, etc.)
 - CORS configurable via admin panel (default: allow all)
@@ -302,6 +312,7 @@ anime (17MB static binary)
 - Bearer token authentication
 
 ✅ **Infrastructure**
+
 - Docker support (multi-arch: amd64, arm64)
 - Docker Compose (production + test configs)
 - Makefile build system
@@ -311,6 +322,7 @@ anime (17MB static binary)
 ### Features Per SPEC (Status)
 
 ✅ **Mandatory (Implemented)**
+
 - Dockerfile (golang:alpine + alpine:latest)
 - docker-compose.yml & docker-compose.test.yml
 - Makefile (build, test, release, docker targets)
@@ -327,6 +339,7 @@ anime (17MB static binary)
 - Version: 0.0.1 (no "v" prefix)
 
 ⏳ **Mandatory (To Be Implemented)**
+
 - ReadTheDocs (MkDocs + Dracula theme)
 - Swagger/OpenAPI documentation
 - GraphQL endpoint
@@ -340,6 +353,7 @@ anime (17MB static binary)
 - Logging system (access.log, error.log, audit.log)
 
 ❌ **Not Required (Per SPEC Exception Rules)**
+
 - GeoIP integration (no location-based features)
 
 ---
@@ -351,6 +365,7 @@ anime (17MB static binary)
 **Per SPEC Section 16 (Mandatory vs Optional Features):**
 
 GeoIP is **ONLY required** for projects with location-based features:
+
 - "Find nearby X" functionality
 - "Where am I?" features
 - Geographic search/filtering
@@ -359,6 +374,7 @@ GeoIP is **ONLY required** for projects with location-based features:
 ### Anime Quotes API Analysis
 
 ❌ **Does NOT need GeoIP because:**
+
 - Serves static anime quotes (no location context)
 - No "find nearby" functionality
 - No geographic search or filtering
@@ -392,11 +408,13 @@ Examples:
 ### Public API (No Authentication)
 
 #### Get Random Quote
+
 ```http
 GET /api/v1/random
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -409,11 +427,13 @@ GET /api/v1/random
 ```
 
 #### Get All Quotes
+
 ```http
 GET /api/v1/quotes
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -432,11 +452,13 @@ GET /api/v1/quotes
 ```
 
 #### Health Check
+
 ```http
 GET /api/v1/health
 ```
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -450,12 +472,14 @@ GET /api/v1/health
 ### Admin API (Requires Authentication)
 
 #### Get Settings
+
 ```http
 GET /api/v1/admin/settings
 Authorization: Bearer <token>
 ```
 
 #### Update Settings
+
 ```http
 PUT /api/v1/admin/settings
 Authorization: Bearer <token>
@@ -511,6 +535,7 @@ make all
 ### Build Details
 
 **Build Command (Docker):**
+
 ```bash
 docker run --rm \
   -v $(pwd):/workspace \
@@ -520,6 +545,7 @@ docker run --rm \
 ```
 
 **Platforms Built:**
+
 1. linux-amd64
 2. linux-arm64
 3. windows-amd64.exe
@@ -554,9 +580,11 @@ make build
 ### Testing Priority (Per SPEC)
 
 **For Building:**
+
 1. ✅ Docker ONLY (golang:alpine)
 
 **For Testing/Debugging:**
+
 1. 🥇 Incus (preferred) - System containers
 2. 🥈 Docker (fallback) - If Incus unavailable
 3. 🥉 Host OS (last resort) - Only when explicitly requested
@@ -566,6 +594,7 @@ make build
 **Test on multiple distributions (Incus):**
 
 1. **Alpine** (musl libc, no systemd)
+
 ```bash
 incus launch images:alpine/3.19 test-alpine
 incus file push ./binaries/anime test-alpine/usr/local/bin/
@@ -574,6 +603,7 @@ incus delete -f test-alpine
 ```
 
 2. **Ubuntu 24.04** (glibc, systemd) - MANDATORY
+
 ```bash
 incus launch images:ubuntu/24.04 test-ubuntu
 # Test systemd service installation
@@ -584,6 +614,7 @@ incus delete -f test-ubuntu
 ```
 
 3. **Fedora** (SELinux, dnf) - Optional but recommended
+
 ```bash
 incus launch images:fedora/40 test-fedora
 incus file push ./binaries/anime test-fedora/usr/local/bin/
@@ -594,6 +625,7 @@ incus delete -f test-fedora
 ### Port Selection
 
 **ALWAYS use random ports (64000-64999):**
+
 ```bash
 TESTPORT=$(shuf -i 64000-64999 -n 1)
 ./binaries/anime --port $TESTPORT
@@ -604,6 +636,7 @@ TESTPORT=$(shuf -i 64000-64999 -n 1)
 ### Test Data Location
 
 **ALWAYS use /tmp/ for test data:**
+
 ```bash
 # Correct
 ./binaries/anime \
@@ -623,6 +656,7 @@ TESTPORT=$(shuf -i 64000-64999 -n 1)
 ### Dockerfile
 
 **Multi-stage build:**
+
 ```dockerfile
 # Build stage
 FROM golang:alpine AS builder
@@ -636,6 +670,7 @@ FROM alpine:latest
 ```
 
 **Key Points:**
+
 - Builder: `golang:alpine` (latest)
 - Runtime: `alpine:latest` (not scratch)
 - Binary location: `/usr/local/bin/anime`
@@ -645,6 +680,7 @@ FROM alpine:latest
 ### Docker Compose
 
 **Production** (`docker-compose.yml`):
+
 ```yaml
 services:
   anime:
@@ -662,6 +698,7 @@ services:
 ```
 
 **Development** (`docker-compose.test.yml`):
+
 ```yaml
 services:
   anime:
@@ -677,6 +714,7 @@ services:
 ```
 
 **Key Differences:**
+
 - Production: pre-built image, persistent storage, Docker bridge IP
 - Development: local build, ephemeral /tmp storage, localhost
 
@@ -705,6 +743,7 @@ services:
 **Location:** `.github/workflows/`
 
 #### release.yml (Binary Builds)
+
 - **Trigger:** Push to main, monthly (1st @ 3AM UTC), manual
 - **Jobs:**
   1. Test (Go 1.23)
@@ -712,6 +751,7 @@ services:
   3. Create GitHub release with binaries
 
 #### docker.yml (Docker Images)
+
 - **Trigger:** Push to main, monthly (1st @ 3AM UTC), manual
 - **Jobs:**
   1. Build multi-arch images (amd64, arm64)
@@ -719,6 +759,7 @@ services:
   3. Tags: `latest`, `0.0.1`, `main-{sha}`
 
 **Key Points:**
+
 - Reads version from `release.txt` (does NOT modify it)
 - Deletes existing release if exists (always recreate)
 - Multi-arch support via buildx
@@ -730,6 +771,7 @@ services:
 **Location:** `Jenkinsfile`
 
 **Pipeline:**
+
 ```groovy
 1. Checkout (amd64 agent)
 2. Test (parallel: amd64, arm64)
@@ -740,6 +782,7 @@ services:
 ```
 
 **Key Features:**
+
 - Multi-agent pipeline (amd64, arm64)
 - Parallel builds and tests
 - Docker manifest creation for multi-arch
@@ -752,6 +795,7 @@ services:
 ### Rate Limiting (Implemented)
 
 **Configuration (configurable via admin panel):**
+
 ```go
 Global:  100 req/s (burst: 200)
 API:     50 req/s (burst: 100)
@@ -761,6 +805,7 @@ Admin:   10 req/s (burst: 20)
 **Implementation:** go-chi/httprate middleware
 
 **Response on limit:**
+
 ```http
 HTTP/1.1 429 Too Many Requests
 X-RateLimit-Limit: 100
@@ -790,6 +835,7 @@ Permissions-Policy: geolocation=(), microphone=(), camera=()
 ```
 
 **HSTS (if HTTPS):**
+
 ```http
 Strict-Transport-Security: max-age=31536000; includeSubDomains
 ```
@@ -809,6 +855,7 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 ```
 
 **Production Recommendation:**
+
 ```json
 {
   "server.cors_origins": ["https://yourdomain.com", "https://app.yourdomain.com"]
@@ -818,17 +865,20 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 ### Authentication
 
 **Admin Panel:**
+
 - Basic Auth (username/password)
 - Bearer tokens (API access)
 - bcrypt password hashing (cost: 10)
 - Token length: 64 characters (cryptographically random)
 
 **Brute Force Protection:**
+
 - Track failed login attempts per IP
 - Block after 5 failed attempts
 - Reset on successful login
 
 **Credentials Storage:**
+
 - File: `{CONFIG_DIR}/admin_credentials`
 - Permissions: 0600 (read/write owner only)
 - Format: Plain text (for first-time setup), bcrypt in database
@@ -840,12 +890,14 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 ### Features
 
 ✅ **Dashboard** (`/admin`)
+
 - Server statistics
 - Quote count
 - System health
 - Recent activity
 
 ✅ **Settings Management** (`/admin/settings`)
+
 - CORS configuration
 - Rate limiting
 - Security headers
@@ -853,6 +905,7 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 - Live reload (no restart needed)
 
 ⏳ **To Be Implemented**
+
 - Log viewer
 - Database status
 - System metrics
@@ -860,17 +913,18 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 
 ### Settings Categories
 
-| Category | Settings | Live Reload |
-|----------|----------|-------------|
-| `server` | CORS, title, description | ✅ Yes |
-| `rate` | All rate limiting configs | ✅ Yes |
-| `request` | Timeouts, size limits | ✅ Yes |
-| `security` | Headers, policies | ✅ Yes |
-| `log` | Logging levels, formats | ✅ Yes |
+| Category   | Settings                  | Live Reload |
+| ---------- | ------------------------- | ----------- |
+| `server`   | CORS, title, description  | ✅ Yes       |
+| `rate`     | All rate limiting configs | ✅ Yes       |
+| `request`  | Timeouts, size limits     | ✅ Yes       |
+| `security` | Headers, policies         | ✅ Yes       |
+| `log`      | Logging levels, formats   | ✅ Yes       |
 
 ### Live Reload Mechanism
 
 **How it works:**
+
 1. Admin updates setting via WebUI
 2. Setting saved to SQLite database
 3. SettingsManager detects change (channel notification)
@@ -890,6 +944,7 @@ Strict-Transport-Security: max-age=31536000; includeSubDomains
 #### Tables
 
 **1. admin_users**
+
 ```sql
 CREATE TABLE admin_users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -902,6 +957,7 @@ CREATE TABLE admin_users (
 ```
 
 **2. settings**
+
 ```sql
 CREATE TABLE settings (
   key TEXT PRIMARY KEY,
@@ -937,6 +993,7 @@ INSERT INTO settings (key, value, type, category, description) VALUES
 ### Connection Management
 
 **Connection pooling:**
+
 ```go
 db.SetMaxOpenConns(25)
 db.SetMaxIdleConns(5)
@@ -944,6 +1001,7 @@ db.SetConnMaxLifetime(5 * time.Minute)
 ```
 
 **Health check:**
+
 ```go
 if err := db.Ping(); err != nil {
     // Enter maintenance mode
@@ -964,6 +1022,7 @@ if err := db.Ping(); err != nil {
 ### Theme
 
 **Dark mode by default:**
+
 ```css
 :root {
   --bg-primary: #1a1a1a;
@@ -976,6 +1035,7 @@ if err := db.Ping(); err != nil {
 ```
 
 **Light mode (toggle):**
+
 ```css
 [data-theme="light"] {
   --bg-primary: #ffffff;
@@ -988,6 +1048,7 @@ if err := db.Ping(); err != nil {
 ### Components
 
 **Buttons, Cards, Modals, Toasts, Forms, Grids:**
+
 - All styled with CSS custom properties
 - Smooth transitions (150ms, 300ms)
 - Hover effects and shadows
@@ -996,11 +1057,13 @@ if err := db.Ping(); err != nil {
 ### Responsive Design
 
 **Desktop (≥720px):**
+
 - Content width: 90%
 - Max-width: 1200px (optional)
 - Left/right margins: 5%
 
 **Mobile (<720px):**
+
 - Content width: 98%
 - Left/right margins: 1%
 - Hamburger menu for navigation
@@ -1008,6 +1071,7 @@ if err := db.Ping(); err != nil {
 ### Accessibility
 
 ✅ **Features:**
+
 - Semantic HTML5 tags
 - ARIA labels
 - Keyboard navigation
@@ -1022,6 +1086,7 @@ if err := db.Ping(); err != nil {
 ### Binary Installation
 
 **Download from GitHub Releases:**
+
 ```bash
 # Linux (amd64)
 wget https://github.com/apimgr/anime/releases/download/0.0.1/anime-linux-amd64
@@ -1030,6 +1095,7 @@ chmod +x anime-linux-amd64
 ```
 
 **Platforms Available:**
+
 - Linux: amd64, arm64
 - Windows: amd64, arm64
 - macOS: amd64, arm64
@@ -1038,6 +1104,7 @@ chmod +x anime-linux-amd64
 ### OS-Specific Directories
 
 **Linux (root):**
+
 ```
 Config:  /etc/anime/
 Data:    /var/lib/anime/
@@ -1045,6 +1112,7 @@ Logs:    /var/log/anime/
 ```
 
 **Linux (user):**
+
 ```
 Config:  ~/.config/anime/
 Data:    ~/.local/share/anime/
@@ -1052,6 +1120,7 @@ Logs:    ~/.local/state/anime/
 ```
 
 **macOS (root):**
+
 ```
 Config:  /Library/Application Support/Anime/
 Data:    /Library/Application Support/Anime/data/
@@ -1059,6 +1128,7 @@ Logs:    /Library/Logs/Anime/
 ```
 
 **macOS (user):**
+
 ```
 Config:  ~/Library/Application Support/Anime/
 Data:    ~/Library/Application Support/Anime/data/
@@ -1066,6 +1136,7 @@ Logs:    ~/Library/Logs/Anime/
 ```
 
 **Windows (admin):**
+
 ```
 Config:  C:\ProgramData\Anime\config\
 Data:    C:\ProgramData\Anime\data\
@@ -1073,6 +1144,7 @@ Logs:    C:\ProgramData\Anime\logs\
 ```
 
 **Docker:**
+
 ```
 Config:  /config
 Data:    /data
@@ -1106,12 +1178,14 @@ DEBUG=1                    # Enable debug mode (NEVER in production)
 ### Docker Deployment
 
 **Production:**
+
 ```bash
 docker-compose up -d
 # Access at http://172.17.0.1:64180
 ```
 
 **Development:**
+
 ```bash
 make docker-dev
 docker-compose -f docker-compose.test.yml up -d
@@ -1125,11 +1199,13 @@ docker-compose -f docker-compose.test.yml up -d
 ### Git Workflow
 
 **AI NEVER executes git commands:**
+
 - ❌ `git add`, `git commit`, `git push`, `git tag`
 - ❌ Any write operations
 - ✅ `git status`, `git diff`, `git log` (read-only)
 
 **After making changes, AI reports:**
+
 ```
 Changes Complete:
 
@@ -1189,11 +1265,13 @@ docker-compose -f docker-compose.test.yml up
 ### Making Changes
 
 **Before changing code:**
+
 1. Read SPEC.md for standards
 2. Check existing patterns in codebase
 3. Understand affected components
 
 **After changing code:**
+
 1. Build: `make build`
 2. Test: `make test`
 3. Verify binary: `./binaries/anime --version`
@@ -1257,6 +1335,7 @@ docker-compose -f docker-compose.test.yml up
 ## Key Differences from SPEC
 
 ### Mandatory Features (Completed)
+
 - ✅ Docker (golang:alpine + alpine:latest)
 - ✅ docker-compose.yml & test.yml
 - ✅ Makefile (4 targets)
@@ -1272,6 +1351,7 @@ docker-compose -f docker-compose.test.yml up
 - ✅ Version: 0.0.1 (no "v")
 
 ### Mandatory Features (Pending)
+
 - ⏳ ReadTheDocs (MkDocs + Dracula)
 - ⏳ OpenAPI/Swagger docs
 - ⏳ GraphQL endpoint
@@ -1284,6 +1364,7 @@ docker-compose -f docker-compose.test.yml up
 - ⏳ Logging system
 
 ### Optional Features (Status)
+
 - ✅ IPv6 Support: Implemented with auto-detect fallback (default: `::`)
 - ❌ GeoIP: Correctly excluded (no location features)
 
