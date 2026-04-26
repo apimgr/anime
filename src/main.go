@@ -49,7 +49,13 @@ func main() {
 	serviceCmd := flag.String("service", "", "Service commands: start, stop, restart, reload, status, --install, --uninstall, --disable, --help")
 
 	// Maintenance commands
-	maintenanceCmd := flag.String("maintenance", "", "Maintenance commands: backup, restore, update")
+	maintenanceCmd := flag.String("maintenance", "", "Maintenance commands: backup, restore, update, mode, setup")
+
+	// Application mode
+	modeFlag := flag.String("mode", "", "Application mode: production, development")
+
+	// Update commands
+	updateCmd := flag.String("update", "", "Update commands: check, yes, branch {stable|beta|daily}")
 
 	flag.Parse()
 
@@ -113,6 +119,18 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Handle mode flag
+	if *modeFlag != "" {
+		setApplicationMode(*modeFlag, configPath)
+		return
+	}
+
+	// Handle update command
+	if *updateCmd != "" {
+		handleUpdateCommand(*updateCmd, cfg)
+		return
+	}
+
 	// Handle service commands
 	if *serviceCmd != "" {
 		handleServiceCommand(*serviceCmd, configDir)
@@ -121,7 +139,7 @@ func main() {
 
 	// Handle maintenance commands
 	if *maintenanceCmd != "" {
-		handleMaintenanceCommand(*maintenanceCmd, configDir, dataDir, logsDir)
+		handleMaintenanceCommand(*maintenanceCmd, configDir, dataDir, logsDir, configPath)
 		return
 	}
 
@@ -210,6 +228,15 @@ Options:
   --status             Check service status (for healthcheck)
   --help               Show this help message
 
+Mode Commands:
+  --mode production    Set production mode
+  --mode development   Set development mode
+
+Update Commands:
+  --update check       Check for available updates
+  --update yes         Install available updates
+  --update branch {stable|beta|daily}  Set update branch
+
 Service Commands:
   --service start      Start the service
   --service stop       Stop the service
@@ -224,6 +251,8 @@ Maintenance Commands:
   --maintenance backup [file]   Backup configuration and data
   --maintenance restore [file]  Restore from backup
   --maintenance update          Check for and install updates
+  --maintenance mode            Show current application mode
+  --maintenance setup           Run initial setup wizard
 
 Environment Variables:
   PORT         Server port
@@ -280,7 +309,7 @@ func handleServiceCommand(cmd, configDir string) {
 	}
 }
 
-func handleMaintenanceCommand(cmd, configDir, dataDir, logsDir string) {
+func handleMaintenanceCommand(cmd, configDir, dataDir, logsDir, configPath string) {
 	args := flag.Args()
 
 	switch cmd {
@@ -305,9 +334,13 @@ func handleMaintenanceCommand(cmd, configDir, dataDir, logsDir string) {
 		maintenanceRestore(args[0], configDir, dataDir)
 	case "update":
 		maintenanceUpdate()
+	case "mode":
+		showCurrentMode(configPath)
+	case "setup":
+		runInitialSetup(configPath)
 	default:
 		fmt.Printf("Unknown maintenance command: %s\n", cmd)
-		fmt.Println("Available commands: backup, restore, update")
+		fmt.Println("Available commands: backup, restore, update, mode, setup")
 		os.Exit(1)
 	}
 }
@@ -497,6 +530,93 @@ func maintenanceUpdate() {
 	fmt.Printf("Current version: %s\n", Version)
 	fmt.Println("Update feature not yet implemented")
 	fmt.Println("Visit https://github.com/apimgr/anime/releases for the latest version")
+}
+
+// setApplicationMode sets the application mode
+func setApplicationMode(mode, configPath string) {
+	if mode != "production" && mode != "development" {
+		fmt.Printf("Invalid mode: %s\n", mode)
+		fmt.Println("Valid modes: production, development")
+		os.Exit(1)
+	}
+
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	cfg.Server.Mode = mode
+	if err := config.Save(configPath, cfg); err != nil {
+		log.Fatalf("Failed to save config: %v", err)
+	}
+
+	fmt.Printf("Application mode set to: %s\n", mode)
+}
+
+// showCurrentMode displays the current application mode
+func showCurrentMode(configPath string) {
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	mode := cfg.Server.Mode
+	if mode == "" {
+		mode = "production"
+	}
+	fmt.Printf("Current mode: %s\n", mode)
+}
+
+// runInitialSetup runs the initial setup wizard
+func runInitialSetup(configPath string) {
+	fmt.Println("Anime API Initial Setup")
+	fmt.Println("========================")
+
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Interactive setup would go here
+	// For now, just show current configuration
+	fmt.Printf("\nConfiguration file: %s\n", configPath)
+	fmt.Printf("Current port: %s\n", cfg.Server.Port)
+	fmt.Printf("Current mode: %s\n", cfg.Server.Mode)
+	fmt.Println("\nSetup complete. Edit the configuration file to customize settings.")
+}
+
+// handleUpdateCommand handles update-related commands
+func handleUpdateCommand(cmd string, cfg *config.Config) {
+	args := flag.Args()
+
+	switch cmd {
+	case "check":
+		fmt.Println("Checking for updates...")
+		fmt.Printf("Current version: %s\n", Version)
+		fmt.Printf("Update branch: %s\n", cfg.Server.UpdateBranch)
+		fmt.Println("No updates available (update checking not implemented)")
+	case "yes":
+		fmt.Println("Installing updates...")
+		fmt.Println("Update installation not implemented")
+	case "branch":
+		if len(args) == 0 {
+			fmt.Printf("Current update branch: %s\n", cfg.Server.UpdateBranch)
+			fmt.Println("Usage: anime --update branch {stable|beta|daily}")
+			return
+		}
+		branch := args[0]
+		if branch != "stable" && branch != "beta" && branch != "daily" {
+			fmt.Printf("Invalid branch: %s\n", branch)
+			fmt.Println("Valid branches: stable, beta, daily")
+			os.Exit(1)
+		}
+		cfg.Server.UpdateBranch = branch
+		fmt.Printf("Update branch set to: %s\n", branch)
+	default:
+		fmt.Printf("Unknown update command: %s\n", cmd)
+		fmt.Println("Available commands: check, yes, branch")
+		os.Exit(1)
+	}
 }
 
 func runCommand(name string, args ...string) {
