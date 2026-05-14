@@ -5,7 +5,6 @@ releases/
 *.dll
 *.so
 *.dylib
-anime
 
 # Test binary
 *.test
@@ -28,14 +27,14 @@ go.work.sum
 .DS_Store
 Thumbs.db
 
-# Docker volumes
-rootfs/
+# Runtime volumes (docker compose, never committed)
+volumes/
 
 # Config and data
 *.db
 *.log
-config/
-data/
+/config/
+/data/
 logs/
 
 # Temporary
