@@ -1,0 +1,42 @@
+# Binaries
+binaries/
+releases/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output
+*.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Runtime volumes (docker compose, never committed)
+volumes/
+
+# Config and data
+*.db
+*.log
+/config/
+/data/
+logs/
+
+# Temporary
+/tmp/
+*.tmp

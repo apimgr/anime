@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Anime Quotes API - Get random anime quotes and discover wisdom from your favorite anime characters">
+    <meta name="keywords" content="anime, quotes, api, anime quotes, random quotes">
+    <meta name="author" content="Anime Quotes API">
+    <title>{{.Title}} - Anime Quotes API</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="icon" type="image/png" href="/static/images/favicon.png">
+</head>
+<body>
+    <!-- Main Header -->
+    <header id="main-header">
+        <div class="header-container">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle mobile menu">☰</button>
+                <a class="logo" href="/">Anime Quotes</a>
+            </div>
+            <nav id="main-nav" class="header-center" aria-label="Main navigation">
+                <a href="/" {{if eq .Page "home"}}class="active"{{end}}>Home</a>
+                <a href="/api/v1/quotes" {{if eq .Page "quotes"}}class="active"{{end}}>All Quotes</a>
+                <a href="/api/v1/health" {{if eq .Page "health"}}class="active"{{end}}>Health</a>
+                {{if .IsAdmin}}
+                <a href="/admin" {{if eq .Page "admin"}}class="active"{{end}}>Admin</a>
+                {{end}}
+            </nav>
+            <div class="header-right">
+                <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark/light theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content">
+        {{template "content" .}}
+    </main>
+
+    <!-- Main Footer -->
+    <footer id="main-footer">
+        <div class="footer-container">
+            <p>&copy; 2024 Anime Quotes API - Open Source MIT License</p>
+            <p style="margin-top: 8px; color: var(--text-tertiary); font-size: 0.875rem;">
+                Press <kbd style="padding: 2px 6px; background: var(--bg-tertiary); border-radius: 4px;">Ctrl+K</kbd> to toggle theme |
+                <kbd style="padding: 2px 6px; background: var(--bg-tertiary); border-radius: 4px;">Space</kbd> for new quote
+            </p>
+        </div>
+    </footer>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Modal Container -->
+    <div id="modal-container"></div>
+
+    <!-- Main JavaScript -->
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

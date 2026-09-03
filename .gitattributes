@@ -1,0 +1,98 @@
+# Git Attributes for Anime Quotes API
+
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Source code
+*.go text eol=lf
+*.mod text eol=lf
+*.sum text eol=lf
+
+# Web assets
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.xml text eol=lf
+*.svg text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.txt text eol=lf
+LICENSE* text eol=lf
+README* text eol=lf
+
+# Configuration files
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.dockerignore text eol=lf
+
+# Docker
+Dockerfile* text eol=lf
+docker-compose*.yml text eol=lf
+
+# Scripts
+*.sh text eol=lf
+*.bash text eol=lf
+Makefile text eol=lf
+Jenkinsfile text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.pdf binary
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+
+# Archives
+*.zip binary
+*.tar binary
+*.gz binary
+*.tgz binary
+*.bz2 binary
+*.7z binary
+*.rar binary
+
+# Compiled binaries
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+
+# Fonts
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+
+# Export ignore (files not included in releases)
+.github/ export-ignore
+.claude/ export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore
+.dockerignore export-ignore
+binaries/ export-ignore
+releases/ export-ignore
+rootfs/ export-ignore
+coverage.out export-ignore
+*.log export-ignore
+*.tmp export-ignore
+
+# Language-specific settings
+*.go diff=go
+*.md diff=markdown
+
+# Linguist overrides (for GitHub language detection)
+src/data/*.json linguist-documentation=false
+*.md linguist-documentation
+docs/** linguist-documentation

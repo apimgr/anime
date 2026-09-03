@@ -1,0 +1,39 @@
+# Development/Testing Docker Compose Configuration
+# Uses /tmp for ephemeral storage
+# External port: 64181:80 (random unused port in 64xxx range)
+
+services:
+  anime:
+    image: anime:dev
+    container_name: anime-test
+    restart: "no"
+
+    environment:
+      - PORT=80
+      - ADDRESS=::
+      - DEV=true
+
+    ports:
+      - "64181:80"
+
+    networks:
+      - anime
+
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/anime", "--status"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+networks:
+  anime:
+    name: anime
+    external: false
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/16
+        - subnet: fd01::/64
