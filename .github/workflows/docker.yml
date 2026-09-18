@@ -95,7 +95,7 @@ jobs:
             VERSION=${{ env.VERSION }}
             BUILD_DATE=${{ env.BUILD_DATE }}
             BUILD_EPOCH=${{ env.BUILD_EPOCH }}
-            VCS_REF=${{ env.COMMIT_ID }}
+            COMMIT_ID=${{ env.COMMIT_ID }}
           labels: |
             org.opencontainers.image.vendor=apimgr
             org.opencontainers.image.authors=apimgr
@@ -189,7 +189,7 @@ jobs:
           build-args: |
             BUILD_DATE=${{ env.BUILD_DATE }}
             BUILD_EPOCH=${{ env.BUILD_EPOCH }}
-            VCS_REF=${{ env.COMMIT_ID }}
+            COMMIT_ID=${{ env.COMMIT_ID }}
           labels: |
             org.opencontainers.image.vendor=apimgr
             org.opencontainers.image.authors=apimgr

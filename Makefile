@@ -4,11 +4,11 @@
 PROJECTNAME := anime
 PROJECTORG := apimgr
 VERSION := $(shell cat release.txt 2>/dev/null || echo "0.0.1")
-COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+COMMIT_ID := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # Build variables
-LDFLAGS := -ldflags "-X main.Version=$(VERSION) -X main.Commit=$(COMMIT) -X main.BuildDate=$(BUILD_DATE) -w -s"
+LDFLAGS := -ldflags "-X main.Version=$(VERSION) -X main.CommitID=$(COMMIT_ID) -X main.BuildDate=$(BUILD_DATE) -w -s"
 SRC_DIR := ./src
 BINARY_DIR := ./binaries
 RELEASE_DIR := ./releases
@@ -72,7 +72,7 @@ docker:
 	@docker buildx build \
 		--platform linux/amd64,linux/arm64 \
 		--build-arg VERSION=$(VERSION) \
-		--build-arg COMMIT=$(COMMIT) \
+		--build-arg COMMIT_ID=$(COMMIT_ID) \
 		--build-arg BUILD_DATE=$(BUILD_DATE) \
 		-t ghcr.io/$(PROJECTORG)/$(PROJECTNAME):latest \
 		-t ghcr.io/$(PROJECTORG)/$(PROJECTNAME):$(VERSION) \
@@ -85,7 +85,7 @@ docker-dev:
 	@echo "Building development Docker image..."
 	@docker build \
 		--build-arg VERSION=$(VERSION)-dev \
-		--build-arg COMMIT=$(COMMIT) \
+		--build-arg COMMIT_ID=$(COMMIT_ID) \
 		--build-arg BUILD_DATE=$(BUILD_DATE) \
 		-t $(PROJECTNAME):dev \
 		.

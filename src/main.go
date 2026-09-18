@@ -25,7 +25,7 @@ var animeData []byte
 
 var (
 	Version   = "dev"
-	Commit    = "unknown"
+	CommitID  = "unknown"
 	BuildDate = "unknown"
 )
 

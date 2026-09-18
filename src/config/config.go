@@ -259,6 +259,8 @@ server:
   port: "%s"
   fqdn: "%s"
   address: "%s"
+  mode: "%s"
+  update_branch: "%s"
 
   schedule:
     enabled: %t
@@ -293,6 +295,8 @@ web-security:
 		cfg.Server.Port,
 		cfg.Server.FQDN,
 		cfg.Server.Address,
+		cfg.Server.Mode,
+		cfg.Server.UpdateBranch,
 		cfg.Server.Schedule.Enabled,
 		cfg.Server.Schedule.Notifications,
 		cfg.Server.Metrics.Enabled,

@@ -16,7 +16,7 @@ import (
 // Build info (set from main)
 var (
 	Version   = "dev"
-	Commit    = "unknown"
+	CommitID  = "unknown"
 	BuildDate = "unknown"
 )
 

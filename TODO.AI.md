@@ -41,3 +41,12 @@
   with it, since they existed only to support the deleted login. No
   `server.yml` example docs elsewhere in the repo referenced these fields,
   so no further doc cleanup is needed.
+
+## Makefile Convention Gaps
+
+- `Makefile` `PROJECTNAME`/`PROJECTORG` are hardcoded (`anime`/`apimgr`)
+  instead of inferred from `git remote get-url origin` per convention.
+- `Makefile` `build` target's `LDFLAGS` is missing `-trimpath`.
+- `Makefile` is missing the required `release` and `dev` targets.
+  Out of scope for the CI-fix/CommitID-rename pass that found this
+  (go-lint flagged it as pre-existing); needs a dedicated Makefile pass.

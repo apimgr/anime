@@ -190,14 +190,14 @@ jobs:
           else
             echo "VERSION=devel" >> "$GITHUB_ENV"
           fi
-          echo "COMMIT=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_ENV"
+          echo "COMMIT_ID=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_ENV"
           echo "BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - name: Build linux/amd64 binary
         env:
           GOOS: linux
           GOARCH: amd64
         run: |
-          LDFLAGS="-s -w -X 'main.Version=${{ env.VERSION }}' -X 'main.Commit=${{ env.COMMIT }}' -X 'main.BuildDate=${{ env.BUILD_DATE }}'"
+          LDFLAGS="-s -w -X 'main.Version=${{ env.VERSION }}' -X 'main.CommitID=${{ env.COMMIT_ID }}' -X 'main.BuildDate=${{ env.BUILD_DATE }}'"
           go build -buildvcs=false -trimpath -ldflags "${LDFLAGS}" -o anime-linux-amd64 ./src
       - name: Upload CI binaries
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
