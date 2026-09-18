@@ -25,23 +25,9 @@ type ServerConfig struct {
 	Address      string         `yaml:"address"`
 	Mode         string         `yaml:"mode"`
 	UpdateBranch string         `yaml:"update_branch"`
-	Admin        AdminConfig    `yaml:"admin"`
-	Session      SessionConfig  `yaml:"session"`
 	Schedule     ScheduleConfig `yaml:"schedule"`
 	Metrics      MetricsConfig  `yaml:"metrics"`
 	Logging      LoggingConfig  `yaml:"logging"`
-}
-
-// AdminConfig contains admin panel settings
-type AdminConfig struct {
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	APIToken string `yaml:"api_token"`
-}
-
-// SessionConfig contains session settings
-type SessionConfig struct {
-	Timeout int `yaml:"timeout"`
 }
 
 // ScheduleConfig contains scheduler settings
@@ -105,14 +91,6 @@ func DefaultConfig() *Config {
 			Address:      "0.0.0.0",
 			Mode:         "production",
 			UpdateBranch: "stable",
-			Admin: AdminConfig{
-				Username: "admin",
-				Password: "",
-				APIToken: "",
-			},
-			Session: SessionConfig{
-				Timeout: 3600,
-			},
 			Schedule: ScheduleConfig{
 				Enabled:       true,
 				Notifications: "hourly",

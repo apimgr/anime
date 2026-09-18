@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/apimgr/anime/src/admin"
 	"github.com/apimgr/anime/src/anime"
 	"github.com/apimgr/anime/src/config"
 	"github.com/gorilla/mux"
@@ -29,7 +28,6 @@ type Server struct {
 	port         string
 	address      string
 	startTime    time.Time
-	adminHandler *admin.Handler
 }
 
 // NewServer creates a new HTTP server
@@ -39,18 +37,6 @@ func NewServer(animeService *anime.Service, cfg *config.Config, port, address st
 		return nil, fmt.Errorf("failed to initialize templates: %w", err)
 	}
 
-	// Create admin handler
-	adminHandler := admin.NewHandler(
-		cfg.Server.Admin.Username,
-		cfg.Server.Admin.Password,
-		cfg.Server.Admin.APIToken,
-		cfg.Server.Session.Timeout,
-		false, // SSL enabled - would check cfg if SSL config exists
-		Version,
-		Commit,
-		BuildDate,
-	)
-
 	s := &Server{
 		router:       mux.NewRouter(),
 		animeService: animeService,
@@ -58,7 +44,6 @@ func NewServer(animeService *anime.Service, cfg *config.Config, port, address st
 		port:         port,
 		address:      address,
 		startTime:    time.Now(),
-		adminHandler: adminHandler,
 	}
 
 	s.setupRoutes()
@@ -103,9 +88,6 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/quotes.txt", s.handleAllQuotesText).Methods("GET")
 	api.HandleFunc("/health.txt", s.handleHealthText).Methods("GET")
 	api.HandleFunc("/stats.txt", s.handleStatsText).Methods("GET")
-
-	// Admin routes (session auth for web, bearer token for API)
-	s.adminHandler.RegisterRoutes(s.router)
 }
 
 // getServerURL returns the server URL for display

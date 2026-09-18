@@ -143,11 +143,6 @@ func respondJSON(w http.ResponseWriter, status int, data interface{}) {
 	}
 }
 
-// parseJSON parses JSON request body
-func parseJSON(r *http.Request, target interface{}) error {
-	return json.NewDecoder(r.Body).Decode(target)
-}
-
 // loggingMiddleware logs HTTP requests
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

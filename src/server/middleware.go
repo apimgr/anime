@@ -129,33 +129,6 @@ func apiRateLimitMiddleware() func(http.Handler) http.Handler {
 	return httprate.LimitByIP(apiRPS, 1*time.Second)
 }
 
-// getClientIP extracts the client IP address from the request
-func getClientIP(r *http.Request) string {
-	// Check X-Forwarded-For header (when behind proxy)
-	xff := r.Header.Get("X-Forwarded-For")
-	if xff != "" {
-		ips := strings.Split(xff, ",")
-		if len(ips) > 0 {
-			return strings.TrimSpace(ips[0])
-		}
-	}
-
-	// Check X-Real-IP header (when behind proxy)
-	xri := r.Header.Get("X-Real-IP")
-	if xri != "" {
-		return strings.TrimSpace(xri)
-	}
-
-	// Fallback to RemoteAddr
-	ip := r.RemoteAddr
-	if idx := strings.LastIndex(ip, ":"); idx != -1 {
-		ip = ip[:idx]
-	}
-	ip = strings.Trim(ip, "[]")
-
-	return ip
-}
-
 // recoverMiddleware recovers from panics and logs them
 func recoverMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -169,28 +142,6 @@ func recoverMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// timeoutMiddleware adds a timeout to requests (not currently used but available)
-func timeoutMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		done := make(chan bool)
-		timer := time.NewTimer(maxRequestTimeout)
-		defer timer.Stop()
-
-		go func() {
-			next.ServeHTTP(w, r)
-			done <- true
-		}()
-
-		select {
-		case <-done:
-			return
-		case <-timer.C:
-			log.Printf("Request timeout: %s %s", r.Method, r.RequestURI)
-			http.Error(w, "Request Timeout", http.StatusRequestTimeout)
-			return
-		}
-	})
-}
 
 // Unused but kept for reference
 var _ = fmt.Sprintf

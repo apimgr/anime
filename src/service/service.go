@@ -359,7 +359,7 @@ func installWindows() error {
 	}
 
 	// Create service using sc.exe
-	displayName := strings.Title(appName) + " API"
+	displayName := strings.ToUpper(appName[:1]) + appName[1:] + " API"
 	cmd := exec.Command("sc.exe", "create", appName,
 		"binPath=", binaryPath,
 		"DisplayName=", displayName,

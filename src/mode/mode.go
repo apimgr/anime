@@ -19,10 +19,6 @@ import (
 	"sync"
 )
 
-const (
-	appName = "anime"
-)
-
 // Mode represents an application mode
 type Mode string
 
