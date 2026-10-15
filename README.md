@@ -1,258 +1,85 @@
-# Anime Quotes API
+# Anime Quotes
 
-A simple, fast, and lightweight REST API for anime quotes. Built with Go, providing random anime quotes from a curated collection.
+Anime Quotes is a public, read-only Go service for a curated collection of anime quotes. The dataset is embedded in each server binary. No account, API key, database, or runtime external service is required.
 
-## About
+## Features
 
-- Fast and lightweight API built with Go
-- Random anime quote endpoint
-- Get all quotes endpoint
-- Health check endpoint
-- Docker support with multi-architecture images
-- No external dependencies required
+- Server-rendered browser home and searchable quote collection
+- Random quote and complete collection REST endpoints
+- Case-insensitive search by quote text, anime title, and character
+- Read-only GraphQL API and browser query explorer
+- OpenAPI 3.1 JSON contract and API documentation page
+- Companion `anime-cli` client for random, list, and search operations
+- Embedded quote data and PWA manifest/service worker
+- Anonymous access with request limits; no write endpoints or user accounts
 
-## API Endpoints
+## Run with Docker
 
-### Get Random Quote
-```bash
-GET /api/v1/random
+The production compose file is `docker/docker-compose.yml`. It binds to the Docker bridge address on port 64580 and stores operator configuration and runtime data in the compose directory's `volumes/` paths. Review the port and volume settings before deployment.
+
+```sh
+docker compose -f docker/docker-compose.yml up -d
 ```
 
-Returns a random anime quote.
+The service listens on port 80 in the container. Configure the generated `server.yml` under `/config/apimgr/anime/` or supply the `CONFIG_DIR`, `DATA_DIR`, and `LOGS_DIR` environment variables.
 
-**Response:**
-```json
-{
-  "anime": "Fullmetal Alchemist",
-  "character": "Edward Elric",
-  "quote": "A lesson without pain is meaningless."
-}
+## Server binary
+
+```sh
+anime --help
+anime --version
+anime --port 8080 --address 127.0.0.1
 ```
 
-### Get All Quotes
-```bash
-GET /api/v1/quotes
+The server generates its configuration on first start. Useful environment overrides are `PORT`, `ADDRESS`, `CONFIG_DIR`, `DATA_DIR`, and `LOGS_DIR`. `--status` checks `/api/v1/server/healthz` on the configured listen port.
+
+## HTTP surfaces
+
+| Surface | Route | Behavior |
+|---|---|---|
+| Home | `/` | Server-rendered random quote and service overview |
+| Quote browser | `/quotes` | HTML search form; accepts `q`, `anime`, and `character` |
+| Random quote | `GET /api/v1/random` | One random quote |
+| Quote collection | `GET /api/v1/quotes` | All quotes; optional `q`, `anime`, and `character` filters |
+| Health page | `/server/healthz` | HTML health page |
+| Health API | `/api/v1/server/healthz` | JSON health response |
+| OpenAPI | `/api/v1/server/swagger` | OpenAPI 3.1 JSON; `/api/swagger` is an alias |
+| GraphQL | `/api/v1/server/graphql` | Read-only GraphQL GET or JSON POST; `/api/graphql` is an alias |
+| API documentation | `/server/docs/swagger` | Route reference and OpenAPI link |
+| GraphQL explorer | `/server/docs/graphql` | Browser query form |
+| Informational pages | `/server/about`, `/server/help`, `/server/privacy`, `/server/terms` | Public HTML pages |
+
+GraphQL fields are `randomQuote` and `quotes(q, anime, character)`. Quote fields are `anime`, `character`, and `quote`.
+
+## CLI client
+
+The CLI requires an explicit server URL because the project does not declare an official hosted site. You can also set `ANIME_SERVER_PRIMARY`.
+
+```sh
+anime-cli --server https://anime.example random
+anime-cli --server https://anime.example --output json list
+anime-cli --server https://anime.example search "fullmetal alchemist"
 ```
 
-Returns all anime quotes in the database.
-
-**Response:**
-```json
-[
-  {
-    "anime": "Bleach",
-    "character": "Ichigo Kurosaki",
-    "quote": "I'm not a hero. I'm just a guy who's good at fighting."
-  },
-  ...
-]
-```
-
-### Health Check
-```bash
-GET /api/v1/health
-```
-
-Returns the service health status.
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2024-10-14T16:00:00Z",
-  "totalQuotes": 5000
-}
-```
-
-## Production Installation
-
-### Binary Installation
-
-1. Download the latest binary for your platform from the [releases page](https://github.com/apimgr/anime/releases)
-
-2. Make it executable (Linux/macOS):
-```bash
-chmod +x anime-linux-amd64
-```
-
-3. Run the server:
-```bash
-./anime-linux-amd64 --port 8080
-```
-
-### Environment Variables
-
-- `PORT` - Server port (default: 8080)
-- `ADDRESS` - Server bind address (default: 0.0.0.0)
-
-## Docker Deployment
-
-### Using Docker Compose (Production)
-
-```bash
-docker-compose up -d
-```
-
-The API will be available at `http://172.17.0.1:64180`
-
-### Using Docker Compose (Development)
-
-```bash
-# Build dev image first
-make docker-dev
-
-# Run with test compose
-docker-compose -f docker-compose.test.yml up
-```
-
-The API will be available at `http://localhost:64181`
-
-### Using Docker Run
-
-```bash
-docker run -d \
-  -p 8080:80 \
-  --name anime \
-  ghcr.io/apimgr/anime:latest
-```
+Use `--output text` or `--output json`. The CLI only calls public read-only API routes.
 
 ## Development
 
-### Requirements
+Go and project validation commands run inside `casjaysdev/go:latest` through the Makefile; do not run Go directly on the host.
 
-- Go 1.23 or later
-- Make (optional, for build automation)
-- Docker (optional, for containerization)
-
-### Build System & Testing
-
-**Makefile Targets:**
-- `make build` - Build binaries for all 8 platforms (Linux, Windows, macOS, FreeBSD - amd64/arm64)
-- `make test` - Run tests with coverage
-- `make clean` - Clean build artifacts
-- `make docker` - Build and push multi-platform Docker images to ghcr.io
-- `make docker-dev` - Build Docker image for local development
-- `make test-docker` - Test with Docker using docker-compose.test.yml
-- `make test-incus` - Test with Incus container (alternative to Docker)
-
-**Platforms Supported:**
-- linux-amd64, linux-arm64
-- windows-amd64, windows-arm64
-- macos-amd64, macos-arm64
-- freebsd-amd64, freebsd-arm64
-
-**Version Management:**
-- Version stored in `release.txt` (format: `0.0.1` without "v" prefix)
-- Build: `make build` reads version, doesn't modify it
-- Release: Manual update of `release.txt` when ready for new version
-
-### Development Mode
-
-Run with development flags:
-```bash
-./anime --dev --port 8080
-```
-
-### CI/CD
-
-**GitHub Actions:**
-- Automated builds on push to main
-- Monthly scheduled builds (1st of month)
-- Multi-platform binary releases
-- Docker images pushed to ghcr.io/apimgr/anime
-
-**Jenkins:**
-- Multi-architecture pipeline (amd64, arm64)
-- Server: jenkins.casjay.cc
-- Parallel builds and tests
-- Docker manifest creation for multi-arch support
-
-### Build from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/apimgr/anime.git
-cd anime
-
-# Download dependencies
-go mod download
-
-# Build binary
-make build
-
-# Or build manually
-go build -o anime ./src
-```
-
-### Run Locally
-
-```bash
-# Using make
-make build
-./anime --port 8080
-
-# Or directly with go run
-go run ./src --port 8080
-```
-
-### Testing
-
-```bash
-# Run tests
+```sh
+make dev
 make test
-
-# Or manually
-go test -v ./...
+make local
+make build
 ```
 
-### Build System
+The Makefile builds static server and client binaries for Linux, macOS, Windows, and FreeBSD on amd64 and arm64. `make docker` builds and pushes the multi-platform image to the configured registry. `make clean` removes generated build outputs.
 
-Available make targets:
+## Documentation
 
-- `make build` - Build binaries for all platforms
-- `make test` - Run tests with coverage
-- `make clean` - Clean build artifacts
-- `make docker` - Build and push multi-platform Docker images
-- `make docker-dev` - Build Docker image for local development
-- `make all` - Run tests and build (default)
-
-## Project Structure
-
-```
-anime/
-├── src/
-│   ├── data/
-│   │   └── anime.json       # Quote database
-│   ├── anime/
-│   │   └── service.go       # Quote service logic
-│   ├── server/
-│   │   └── server.go        # HTTP server and handlers
-│   └── main.go              # Application entry point
-├── Dockerfile               # Container definition
-├── docker-compose.yml       # Production compose
-├── docker-compose.test.yml  # Development compose
-├── Makefile                 # Build automation
-├── go.mod                   # Go dependencies
-└── README.md                # This file
-```
-
-## Example Usage
-
-```bash
-# Get a random quote
-curl http://localhost:8080/api/v1/random
-
-# Get all quotes
-curl http://localhost:8080/api/v1/quotes
-
-# Health check
-curl http://localhost:8080/api/v1/health
-```
+Detailed user, API, configuration, security, integration, and development documentation is in `docs/` and built with MkDocs for ReadTheDocs.
 
 ## License
 
-MIT License - See [LICENSE.md](LICENSE.md) for details
-
-## Credits
-
-Anime quotes sourced from various anime series and compiled for educational and entertainment purposes.
+The application is MIT licensed. See [LICENSE.md](LICENSE.md). Quote text remains the property of its respective rights holders.

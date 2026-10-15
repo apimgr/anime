@@ -21,12 +21,14 @@ client_binary: anime-cli
 **In scope:**
 - Serving anime quotes via REST API and web UI
 - Random quote endpoint and full listing endpoint
-- Filtering/searching by anime title or character name
+- Filtering/searching by quote text, anime title, or character name
+- Public JSON API responses with a consistent success envelope
 - Full web frontend (server-side Go templates, dark/light/auto theme, PWA, mobile-first)
 - Server pages: `/server/about`, `/server/help`, `/server/healthz`, `/server/privacy`, `/server/terms`
 - CLI client (`anime-cli`) for fetching quotes from the terminal
-- OpenAPI/Swagger docs at `/api/{api_version}/server/swagger`
-- GraphQL at `/graphql`
+- OpenAPI/Swagger documentation at `/server/docs/swagger` and machine-readable OpenAPI JSON at `/api/{api_version}/server/swagger` (`/api/swagger` alias)
+- GraphQL explorer at `/server/docs/graphql` and read-only GraphQL queries at `/api/{api_version}/server/graphql` (`/api/graphql` alias)
+- CLI client commands for random quote retrieval, listing, and text search; the server URL is explicit because no official site is configured
 
 **Non-goals:**
 - No user accounts, registration, or login of any kind

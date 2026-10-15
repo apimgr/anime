@@ -1,52 +1,27 @@
-# TODO
+# Remaining anime implementation work
 
-## CI/CD
+The IDEA.md product surfaces and prior CI-failure fixes are implemented. These shared AI.md requirements remain incomplete and must not be treated as completed:
 
-- `docker/Dockerfile.dev` is missing. AI.md's CI/CD Rules require the `:devel`
-  image to be built by the `build-devel` job in `.github/workflows/docker.yml`
-  (daily `0 4 * * *` schedule + non-tag push + `workflow_dispatch`). The job
-  is present but guarded with `if: hashFiles('docker/Dockerfile.dev') != ''`
-  so it no-ops until the file exists — add `docker/Dockerfile.dev` to
-  activate it.
-- AI.md's CI/CD Rules § LDFLAGS specifies `-X 'main.CommitID=...' -X
-  'main.BuildEpoch=...' -X 'main.OfficialSite=...'`, but `src/main.go` only
-  declares `Version`, `Commit`, and `BuildDate` package vars (matches the
-  existing `Makefile`). The new workflows (`ci.yml`, `daily.yml`,
-  `release.yml`, `beta.yml`) were built against the vars that actually exist
-  in the code (`main.Version` / `main.Commit` / `main.BuildDate`), not the
-  spec's names, since `-X` against a nonexistent var silently embeds nothing.
-  Reconcile AI.md and `main.go` — either rename the spec's LDFLAGS vars or
-  add `CommitID`/`BuildEpoch`/`OfficialSite` to `main.go`.
-- The project has zero `_test.go` files across all 10 `src/` packages.
-  `ci.yml`'s `test` job enforces a 60% coverage minimum per AI.md's
-  org-wide Go coverage rule; with no tests, coverage is 0% and that job
-  will fail on the first real CI run. Add unit tests (table-driven where
-  applicable) for `src/anime`, `src/config`, `src/data`,
-  `src/mode`, `src/paths`, `src/scheduler`, `src/server`, `src/service`,
-  `src/ssl`, and the root `src` package to reach the 60% threshold —
-  writing a real test suite for a 10-package service is out of scope for
-  a CI/CD-workflow-addition task and needs a dedicated pass.
+## Companion CLI
 
-## Admin UI Removal
+- Implement the client update contract (autodiscover metadata, platform binary download, checksum verification, atomic replacement, and minimum-version refusal). The current project API does not publish client binaries or an autodiscover response.
+- Complete the cli.yml configuration and display-mode behaviors, including config-selected output/theme and profile selection. The current CLI persists its server URL but does not expose all shared config keys or profile handling.
+- Expand shell completions to every required shell and ensure the scripts accurately complete flags and commands.
 
-- `src/admin/` (handlers.go, auth.go — a bearer-token/session-based admin
-  web login and dashboard) was removed: AI.md explicitly forbids an admin
-  web UI, dashboard, settings pages, or web routes for server
-  administration ("Auth is bearer-token only ... and applies to /api/
-  routes, never to HTML pages"; "Server administration is via config file
-  (no admin web panel)"). The wiring in `src/server/server.go`
-  (`admin.NewHandler`, `RegisterRoutes`, the import) and the
-  `ServerConfig.Admin` / `ServerConfig.Session` (`AdminConfig`,
-  `SessionConfig`) fields in `src/config/config.go` were removed along
-  with it, since they existed only to support the deleted login. No
-  `server.yml` example docs elsewhere in the repo referenced these fields,
-  so no further doc cleanup is needed.
+## Server operations
 
-## Makefile Convention Gaps
+- Replace the existing update and maintenance placeholder messages with secure, complete behavior, or remove unsupported commands and their documentation until implementation exists.
+- Finish service lifecycle support across Linux, macOS, Windows, BSD, systemd, runit, rc.d, and launchd. The current implementation shells out only for Linux/macOS and contains fixed paths/identifiers.
+- Complete runtime privilege separation, service account creation, signal-driven config reload, and the operator-only server configuration requirements from AI.md.
 
-- `Makefile` `PROJECTNAME`/`PROJECTORG` are hardcoded (`anime`/`apimgr`)
-  instead of inferred from `git remote get-url origin` per convention.
-- `Makefile` `build` target's `LDFLAGS` is missing `-trimpath`.
-- `Makefile` is missing the required `release` and `dev` targets.
-  Out of scope for the CI-fix/CommitID-rename pass that found this
-  (go-lint flagged it as pre-existing); needs a dedicated Makefile pass.
+## Shared platform features
+
+- Implement the remaining mandatory AI.md server subsystems that this read-only quote product does not currently provide: I2P, internal metrics, scheduler, GeoIP/blocklists, notification delivery, backup/restore, and associated server APIs/CLI flows.
+- Replace the current route-reference page with the full interactive Swagger UI and finish the OpenAPI contract, including response/error schemas and every shipped API route.
+- Complete the shared PWA, accessibility, internationalization, and browser test requirements. The current frontend has existing inline handlers/scripts and does not provide the full shared theme, language, and no-JavaScript behavior.
+- Bring container startup into full AI.md conformance. The current entrypoint supervises child processes in Bash and does not `exec` the server process; the server also does not yet own all Tor and privilege setup described by the shared spec.
+
+## CI and release
+
+- Extend CI to enforce build/test/lint/coverage gates for both binaries and validate the docs and Docker Compose contracts. Release workflows now produce the client binary, but remote Actions have not run for these unpushed changes.
+- Set the ReadTheDocs `site_url` after the canonical hosted documentation URL is confirmed; no authoritative URL is present in IDEA.md or repository metadata.
