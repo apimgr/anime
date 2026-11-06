@@ -76,6 +76,19 @@ make build
 
 The Makefile builds static server and client binaries for Linux, macOS, Windows, and FreeBSD on amd64 and arm64. `make docker` builds and pushes the multi-platform image to the configured registry. `make clean` removes generated build outputs.
 
+### Binary validation
+
+The executable scripts in `tests/` validate compiled binaries separately from the Go unit tests. They build from a temporary source copy, keep runtime state and build caches under a project-scoped OS temporary directory, and remove that directory on exit.
+
+```sh
+./tests/run_tests.sh # Use Incus when available; otherwise run Docker integration checks
+./tests/docker.sh    # Build all platform binaries, then check the Linux binaries and HTTP API in Alpine
+./tests/incus.sh     # Build all platform binaries, then check server startup flags in Debian
+./tests/e2e.sh       # On-demand SSR, no-JavaScript, and browser navigation checks
+```
+
+The Docker runner requires Docker, Make, curl, and jq. The Incus runner requires Incus and Make. The browser suite additionally needs Docker access to `chromedp/headless-shell:latest` and the Go toolchain container image. These scripts do not replace `make test`; the browser suite is not part of the commit gate.
+
 ## Documentation
 
 Detailed user, API, configuration, security, integration, and development documentation is in `docs/` and built with MkDocs for ReadTheDocs.

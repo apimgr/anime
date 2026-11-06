@@ -66,7 +66,7 @@ No PII is stored or served.
 | Quote dataset (embedded at build) | Fully trusted | Static, embedded at compile time |
 | Incoming HTTP requests | **Untrusted** | All query parameters validated |
 
-No external services are called at runtime.
+Normal quote and health requests do not call external services. The explicit `--update` command and CLI discovery/download endpoints consult GitHub Releases; client metadata is cached in memory for five minutes, and downloads are checksum-verified by the CLI.
 
 ### Threat model & abuse cases
 

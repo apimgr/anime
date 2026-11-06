@@ -1,27 +1,47 @@
-# Remaining anime implementation work
+# AI.md alignment work
 
-The IDEA.md product surfaces and prior CI-failure fixes are implemented. These shared AI.md requirements remain incomplete and must not be treated as completed:
+This task list was rebuilt from `AI.md` because the previous task inventory was not reliable. Completion requires implementation, documentation alignment, required verification, and the prescribed commit workflow. AI.md PART 33 is reference material and remains read-only.
 
-## Companion CLI
+## Foundation and binary
 
-- Implement the client update contract (autodiscover metadata, platform binary download, checksum verification, atomic replacement, and minimum-version refusal). The current project API does not publish client binaries or an autodiscover response.
-- Complete the cli.yml configuration and display-mode behaviors, including config-selected output/theme and profile selection. The current CLI persists its server URL but does not expose all shared config keys or profile handling.
-- Expand shell completions to every required shell and ensure the scripts accurately complete flags and commands.
+- [ ] Reconcile repository structure, license/dependency notices, AI loader/rule files, memory, and IDEA.md with PARTS 0–4 and PART 33.
+- [ ] Complete configuration schema, path validation, CLI/environment/file precedence, first-run behavior, and mode handling from PARTS 5, 6, 8, and 12.
+- [ ] Complete binary startup, embedded assets, cross-platform naming/build behavior, command handling, daemon/status/service flags, PID management, and signal behavior from PARTS 7–9.
+- [ ] Complete canonical errors, debug-only diagnostics, cache validators and version-change purge behavior from PARTS 6, 9, and 11.
 
-## Server operations
+## Server data, API, and security
 
-- Replace the existing update and maintenance placeholder messages with secure, complete behavior, or remove unsupported commands and their documentation until implementation exists.
-- Finish service lifecycle support across Linux, macOS, Windows, BSD, systemd, runit, rc.d, and launchd. The current implementation shells out only for Linux/macOS and contains fixed paths/identifiers.
-- Complete runtime privilege separation, service account creation, signal-driven config reload, and the operator-only server configuration requirements from AI.md.
+- [ ] Implement the SQLite/libsql data layer, full idempotent schema, query timeouts, and startup/recovery behavior from PARTS 5, 10, and 11.
+- [ ] Implement security and operational logging, audit events, sanitization, maintenance state, request IDs, path checks, rate limits, and public endpoint safety from PARTS 11–12.
+- [ ] Complete health/version endpoints and all server/API routes, canonical response envelopes, content negotiation, OpenAPI, GraphQL, CORS/CSRF/CSP, and route tests from PARTS 13–14.
+- [ ] Complete TLS certificate lifecycle and ACME/Let's Encrypt behavior from PART 15.
+- [ ] Complete project frontend requirements: SSR, progressive enhancement, all pages/forms, themes, PWA, accessibility, security headers, and browser behavior from PART 16.
 
-## Shared platform features
+## Required platform features
 
-- Implement the remaining mandatory AI.md server subsystems that this read-only quote product does not currently provide: I2P, internal metrics, scheduler, GeoIP/blocklists, notification delivery, backup/restore, and associated server APIs/CLI flows.
-- Replace the current route-reference page with the full interactive Swagger UI and finish the OpenAPI contract, including response/error schemas and every shipped API route.
-- Complete the shared PWA, accessibility, internationalization, and browser test requirements. The current frontend has existing inline handlers/scripts and does not provide the full shared theme, language, and no-JavaScript behavior.
-- Bring container startup into full AI.md conformance. The current entrypoint supervises child processes in Bash and does not `exec` the server process; the server also does not yet own all Tor and privilege setup described by the shared spec.
+- [ ] Implement notifications/email and their configuration, templates, delivery, and test behavior from PART 17.
+- [ ] Complete the built-in scheduler, persistence, lifecycle, and task history from PART 18.
+- [ ] Implement GeoIP and country/IP/domain allow/block controls from PART 19.
+- [ ] Implement internal operational metrics and the specified public/debug surfaces from PART 20.
+- [ ] Replace unsafe/incomplete backup handling with verified, atomic, encrypted backup and restore flows from PART 21.
+- [ ] Complete secure update checks/installations and rollback behavior from PART 22.
+- [ ] Implement privilege escalation and safe service installation/removal from PART 23.
+- [ ] Implement all required service managers and platform behavior from PART 24.
 
-## CI and release
+## Build, delivery, and client
 
-- Extend CI to enforce build/test/lint/coverage gates for both binaries and validate the docs and Docker Compose contracts. Release workflows now produce the client binary, but remote Actions have not run for these unpushed changes.
-- Set the ReadTheDocs `site_url` after the canonical hosted documentation URL is confirmed; no authoritative URL is present in IDEA.md or repository metadata.
+- [ ] Reconcile the Makefile to the exact supported target set and Docker-only toolchain rules in PART 25.
+- [ ] Complete Docker build, runtime, compose, networking, volume, and process behavior from PART 26.
+- [ ] Reconcile all CI/CD providers, pinned actions, required jobs, release artifacts, and security checks with PART 27 and provider conventions.
+- [ ] Add all four required test scripts, unit/integration coverage, endpoint assertions, browser E2E tiers, and supported container/Incus execution from PART 28.
+- [ ] Complete MkDocs/ReadTheDocs configuration and documentation pages from PART 29.
+- [ ] Complete server and client internationalization plus accessibility requirements from PART 30.
+- [ ] Implement the required app-scoped Tor service and optional opt-in I2P support from PART 31.
+- [ ] Complete the CLI client, config/profiles, output modes, shell completions, commands, update contract, and tests from PART 32.
+
+## Final reconciliation and release gate
+
+- [ ] Reconcile IDEA.md with actual product behavior and PART 33; synchronize README, docs, OpenAPI, GraphQL, and help output.
+- [ ] Review every changed file and remove obsolete code, routes, configuration, and documentation that conflict with AI.md.
+- [ ] Run the prescribed build, test, lint, coverage, security, and integration gates in the primary session and resolve all failures.
+- [ ] Complete `.git/COMMIT_MESS`, run `gitcommit --dir` as the only commit/push path, then inspect and resolve the resulting GitHub CI run.
