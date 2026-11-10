@@ -1,21 +1,38 @@
 name: anime
 
+x-logging: &default-logging
+  options:
+    max-size: "5m"
+    max-file: "1"
+  driver: json-file
+
 services:
   anime:
     image: ghcr.io/apimgr/anime:latest
-    container_name: anime
-    restart: unless-stopped
+    container_name: anime-app
+    hostname: anime
+    restart: always
+    pull_policy: always
+    logging: *default-logging
     environment:
-      # Hardcoded with sane defaults - NO .env files
-      - MODE=production
-      - TZ=America/New_York
-      # ENABLE_TOR=true is default, no need to specify
-    ports:
-      # Production: bound to Docker bridge only
-      - "172.17.0.1:64580:80"
+      PORT: 80
+      ADDRESS: ::
+      CONFIG_DIR: /config/anime
+      DATA_DIR: /data/anime
+      LOGS_DIR: /data/log/anime
+      TZ: ${TZ:-America/New_York}
+      ENABLE_TOR: "true"
     volumes:
-      - ./rootfs/config/anime:/config
-      - ./rootfs/data/anime:/data
+      - ./volumes/config:/config:z
+      - ./volumes/data:/data:z
+    ports:
+      - "172.17.0.1:64580:80"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/anime", "--status"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 10m
     networks:
       - anime
 

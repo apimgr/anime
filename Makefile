@@ -1,126 +1,58 @@
-.PHONY: all build test clean docker docker-dev test-docker test-incus help
+# Infer the project identity from its Git remote, then fall back to its directory.
+PROJECT_NAME := $(shell remote=$$(git remote get-url origin 2>/dev/null); if [ -n "$$remote" ]; then basename "$$remote" .git; else basename "$(PWD)"; fi)
+PROJECT_ORG := $(shell remote=$$(git remote get-url origin 2>/dev/null); if [ -n "$$remote" ]; then printf "%s\n" "$$remote" | sed -E 's|.*/([^/]+)/[^/]+(\.git)?$$|\1|'; else basename "$(dir $(PWD))"; fi)
+INTERNAL_NAME := anime
+VERSION := $(shell cat release.txt 2>/dev/null || echo "$${VERSION:-devel}")
+COMMIT_ID := $(shell git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)
+BUILD_EPOCH := $(shell date -u +%s)
+OFFICIAL_SITE ?= $(shell cat site.txt 2>/dev/null)
+BINDIR := binaries
+RELDIR := releases
+PLATFORMS ?= linux/amd64,linux/arm64,darwin/amd64,darwin/arm64,windows/amd64,windows/arm64,freebsd/amd64,freebsd/arm64
+GO_CACHE ?= $(HOME)/go/pkg/mod
+GO_BUILD ?= $(HOME)/.cache/go-build/$(PROJECT_NAME)
+DOCKER_MEM ?= 4g
+DOCKER_CPUS ?= 2
+REGISTRY ?= ghcr.io/$(PROJECT_ORG)/$(PROJECT_NAME)
+LDFLAGS := -s -w -X 'main.Version=$(VERSION)' -X 'main.CommitID=$(COMMIT_ID)' -X 'main.BuildEpoch=$(BUILD_EPOCH)' -X 'main.OfficialSite=$(OFFICIAL_SITE)'
+CLIENT_LDFLAGS := -s -w -X 'main.Version=$(VERSION)' -X 'main.CommitID=$(COMMIT_ID)' -X 'main.BuildEpoch=$(BUILD_EPOCH)'
+CONTAINER := docker run --rm --name $(PROJECT_NAME)-$$(tr -dc 'a-z0-9' </dev/urandom | head -c8) --memory=$(DOCKER_MEM) --cpus=$(DOCKER_CPUS) -v $(PWD):/app -v $(GO_CACHE):/usr/local/share/go/pkg/mod -v $(GO_BUILD):/usr/local/share/go/cache -w /app -e CGO_ENABLED=0 -e GOFLAGS=-buildvcs=false casjaysdev/go:latest
 
-# Project variables
-PROJECTNAME := anime
-PROJECTORG := apimgr
-VERSION := $(shell cat release.txt 2>/dev/null || echo "0.0.1")
-COMMIT_ID := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+.PHONY: dev local build test release docker clean help
 
-# Build variables
-LDFLAGS := -ldflags "-X main.Version=$(VERSION) -X main.CommitID=$(COMMIT_ID) -X main.BuildDate=$(BUILD_DATE) -w -s"
-SRC_DIR := ./src
-BINARY_DIR := ./binaries
-RELEASE_DIR := ./releases
+dev:
+	@mkdir -p "$(GO_CACHE)" "$(GO_BUILD)" "$${TMPDIR:-/tmp}/$(PROJECT_ORG)"
+	@$(CONTAINER) go mod tidy
+	@tmpdir=$$(mktemp -d "$${TMPDIR:-/tmp}/$(PROJECT_ORG)/$(INTERNAL_NAME)-XXXXXX") && \
+	docker run --rm --name $(PROJECT_NAME)-$$(tr -dc 'a-z0-9' </dev/urandom | head -c8) --memory=$(DOCKER_MEM) --cpus=$(DOCKER_CPUS) -v "$(PWD):/app" -v "$$tmpdir:/out" -v "$(GO_CACHE):/usr/local/share/go/pkg/mod" -v "$(GO_BUILD):/usr/local/share/go/cache" -w /app -e CGO_ENABLED=0 -e GOFLAGS=-buildvcs=false casjaysdev/go:latest sh -c 'go build -buildvcs=false -trimpath -ldflags "$(LDFLAGS)" -o /out/$(PROJECT_NAME) ./src && go build -buildvcs=false -trimpath -ldflags "$(CLIENT_LDFLAGS)" -o /out/$(PROJECT_NAME)-cli ./src/client' && echo "Development binaries: $$tmpdir/$(PROJECT_NAME) and $$tmpdir/$(PROJECT_NAME)-cli"
 
-# Platform targets
-PLATFORMS := \
-	linux/amd64 \
-	linux/arm64 \
-	windows/amd64 \
-	windows/arm64 \
-	darwin/amd64 \
-	darwin/arm64 \
-	freebsd/amd64 \
-	freebsd/arm64
+local:
+	@mkdir -p $(BINDIR) $(GO_CACHE) $(GO_BUILD)
+	@$(CONTAINER) go mod tidy
+	@$(CONTAINER) sh -c 'go build -buildvcs=false -trimpath -ldflags "$(LDFLAGS)" -o $(BINDIR)/$(PROJECT_NAME) ./src && go build -buildvcs=false -trimpath -ldflags "$(CLIENT_LDFLAGS)" -o $(BINDIR)/$(PROJECT_NAME)-cli ./src/client'
 
-all: test build
-
-# Test the application
-test:
-	@echo "Running tests..."
-	@go test -v -race -coverprofile=coverage.out ./...
-	@go tool cover -func=coverage.out
-
-# Build for all platforms
 build:
-	@echo "Building $(PROJECTNAME) v$(VERSION)..."
-	@mkdir -p $(BINARY_DIR)
-	@mkdir -p $(RELEASE_DIR)
-	@for platform in $(PLATFORMS); do \
-		GOOS=$${platform%/*}; \
-		GOARCH=$${platform#*/}; \
-		OUTPUT_NAME=$(BINARY_DIR)/$(PROJECTNAME)-$$GOOS-$$GOARCH; \
-		if [ "$$GOOS" = "windows" ]; then \
-			OUTPUT_NAME=$$OUTPUT_NAME.exe; \
-		fi; \
-		echo "Building $$GOOS/$$GOARCH..."; \
-		CGO_ENABLED=0 GOOS=$$GOOS GOARCH=$$GOARCH go build $(LDFLAGS) -o $$OUTPUT_NAME $(SRC_DIR); \
-		if [ $$? -ne 0 ]; then \
-			echo "Error building $$GOOS/$$GOARCH"; \
-			exit 1; \
-		fi; \
-		cp $$OUTPUT_NAME $(RELEASE_DIR)/; \
+	@mkdir -p $(BINDIR) $(GO_CACHE) $(GO_BUILD)
+	@$(CONTAINER) go mod tidy
+	@for platform in $$(echo "$(PLATFORMS)" | tr ',' ' '); do \
+		os=$${platform%/*}; arch=$${platform#*/}; ext=; [ "$$os" = windows ] && ext=.exe; \
+		$(CONTAINER) sh -c "GOOS=$$os GOARCH=$$arch go build -buildvcs=false -trimpath -ldflags \"$(LDFLAGS)\" -o $(BINDIR)/$(PROJECT_NAME)-$$os-$$arch$$ext ./src && GOOS=$$os GOARCH=$$arch go build -buildvcs=false -trimpath -ldflags \"$(CLIENT_LDFLAGS)\" -o $(BINDIR)/$(PROJECT_NAME)-cli-$$os-$$arch$$ext ./src/client" || exit 1; \
 	done
-	@echo "Building host binary..."
-	@CGO_ENABLED=0 go build $(LDFLAGS) -o $(BINARY_DIR)/$(PROJECTNAME) $(SRC_DIR)
-	@cp $(BINARY_DIR)/$(PROJECTNAME) ./$(PROJECTNAME)
-	@echo "✓ Build complete - binaries in $(BINARY_DIR)/"
 
-# Clean build artifacts
-clean:
-	@echo "Cleaning build artifacts..."
-	@rm -rf $(BINARY_DIR)
-	@rm -rf $(RELEASE_DIR)
-	@rm -f $(PROJECTNAME)
-	@rm -f coverage.out
-	@echo "✓ Clean complete"
+test:
+	@mkdir -p $(GO_CACHE) $(GO_BUILD) "$${TMPDIR:-/tmp}/$(PROJECT_ORG)"
+	@$(CONTAINER) sh -c '		mkdir -p "$${TMPDIR:-/tmp}/$(PROJECT_ORG)" && 		covdir=$$(mktemp -d "$${TMPDIR:-/tmp}/$(PROJECT_ORG)/$(INTERNAL_NAME)-XXXXXX") && 		trap "rm -rf $$covdir" EXIT && 		go vet ./... && govulncheck ./... && 		go test -timeout 5m -covermode=atomic -coverprofile=$$covdir/coverage.out ./... && 		go tool cover -func=$$covdir/coverage.out && 		coverage=$$(go tool cover -func=$$covdir/coverage.out | awk "/^total:/ {gsub(/%/, \"\", \$$3); print \$$3}") && 		awk -v coverage="$$coverage" "BEGIN { if (coverage+0 < 60) exit 1 }" 	'
 
-# Build and push multi-platform Docker images (release)
+release: build
+	@mkdir -p $(RELDIR)
+	@cp $(BINDIR)/* $(RELDIR)/
+	@tar --exclude=.git --exclude=binaries --exclude=releases -czf $(RELDIR)/$(PROJECT_NAME)-$(VERSION)-source.tar.gz .
+
 docker:
-	@echo "Building multi-platform Docker images..."
-	@docker buildx build \
-		--platform linux/amd64,linux/arm64 \
-		--build-arg VERSION=$(VERSION) \
-		--build-arg COMMIT_ID=$(COMMIT_ID) \
-		--build-arg BUILD_DATE=$(BUILD_DATE) \
-		-t ghcr.io/$(PROJECTORG)/$(PROJECTNAME):latest \
-		-t ghcr.io/$(PROJECTORG)/$(PROJECTNAME):$(VERSION) \
-		--push \
-		.
-	@echo "✓ Docker images pushed to ghcr.io/$(PROJECTORG)/$(PROJECTNAME):$(VERSION)"
+	@docker buildx build --platform linux/amd64,linux/arm64 --file docker/Dockerfile --build-arg VERSION=$(VERSION) --build-arg BUILD_EPOCH=$(BUILD_EPOCH) --build-arg COMMIT_ID=$(COMMIT_ID) --build-arg OFFICIAL_SITE=$(OFFICIAL_SITE) --tag $(REGISTRY):$(VERSION) --tag $(REGISTRY):latest --push .
 
-# Build Docker image for development (local only, not pushed)
-docker-dev:
-	@echo "Building development Docker image..."
-	@docker build \
-		--build-arg VERSION=$(VERSION)-dev \
-		--build-arg COMMIT_ID=$(COMMIT_ID) \
-		--build-arg BUILD_DATE=$(BUILD_DATE) \
-		-t $(PROJECTNAME):dev \
-		.
-	@echo "✓ Docker development image built: $(PROJECTNAME):dev"
+clean:
+	@rm -rf $(BINDIR) $(RELDIR)
 
-# Test with Docker (using docker-compose.test.yml)
-test-docker:
-	@echo "Testing with Docker..."
-	@docker-compose -f docker-compose.test.yml up -d
-	@echo "Waiting for service..."
-	@timeout 30 bash -c 'until curl -sf http://localhost:64181/api/v1/health; do sleep 1; done' || (docker-compose -f docker-compose.test.yml logs && exit 1)
-	@echo "✓ Service is running"
-	@docker-compose -f docker-compose.test.yml logs
-	@docker-compose -f docker-compose.test.yml down
-	@sudo rm -rf /tmp/anime/rootfs
-	@echo "✓ Docker test complete"
-
-# Test with Incus (if Docker not available)
-test-incus:
-	@echo "Testing with Incus..."
-	@incus launch images:alpine/3.19 $(PROJECTNAME)-test
-	@incus file push ./binaries/$(PROJECTNAME) $(PROJECTNAME)-test/usr/local/bin/
-	@incus exec $(PROJECTNAME)-test -- chmod +x /usr/local/bin/$(PROJECTNAME)
-	@incus exec $(PROJECTNAME)-test -- /usr/local/bin/$(PROJECTNAME) --help
-	@incus delete -f $(PROJECTNAME)-test
-	@echo "✓ Incus test complete"
-
-# Help target
 help:
-	@echo "Available targets:"
-	@echo "  make build       - Build binaries for all platforms"
-	@echo "  make test        - Run tests"
-	@echo "  make clean       - Clean build artifacts"
-	@echo "  make docker      - Build and push multi-platform Docker images"
-	@echo "  make docker-dev  - Build Docker image for local development"
-	@echo "  make test-docker - Test with Docker using docker-compose.test.yml"
-	@echo "  make test-incus  - Test with Incus container"
-	@echo "  make all         - Run tests and build (default)"
+	@printf '%s\n' 'dev local build test release docker clean'

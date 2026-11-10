@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/apimgr/anime/src/config"
+	"github.com/apimgr/anime/src/updater"
 )
 
 // runExitingHelper re-invokes this test binary as a subprocess with the given
@@ -64,7 +65,7 @@ func TestPrintHelp(t *testing.T) {
 
 func TestCheckHealthSuccess(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/health" {
+		if r.URL.Path != "/api/v1/server/healthz" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -141,21 +142,27 @@ func TestRunInitialSetup(t *testing.T) {
 }
 
 func TestHandleUpdateCommandCheck(t *testing.T) {
+	useEmptyUpdateFeed(t)
 	cfg := config.DefaultConfig()
 	output := captureStdout(t, func() {
-		handleUpdateCommand("check", cfg)
+		if err := handleUpdateCommand("check", cfg, ""); err != nil {
+			t.Errorf("check update: %v", err)
+		}
 	})
-	if !strings.Contains(output, "Checking for updates") {
+	if !strings.Contains(output, "up to date") {
 		t.Errorf("expected update check output, got %q", output)
 	}
 }
 
 func TestHandleUpdateCommandYes(t *testing.T) {
+	useEmptyUpdateFeed(t)
 	cfg := config.DefaultConfig()
 	output := captureStdout(t, func() {
-		handleUpdateCommand("yes", cfg)
+		if err := handleUpdateCommand("yes", cfg, ""); err != nil {
+			t.Errorf("update: %v", err)
+		}
 	})
-	if !strings.Contains(output, "Installing updates") {
+	if !strings.Contains(output, "already up to date") {
 		t.Errorf("expected install updates output, got %q", output)
 	}
 }
@@ -169,7 +176,9 @@ func TestHandleUpdateCommandBranchShowCurrent(t *testing.T) {
 
 	cfg := config.DefaultConfig()
 	output := captureStdout(t, func() {
-		handleUpdateCommand("branch", cfg)
+		if err := handleUpdateCommand("branch", cfg, ""); err != nil {
+			t.Errorf("show branch: %v", err)
+		}
 	})
 	if !strings.Contains(output, "Current update branch") {
 		t.Errorf("expected current branch output, got %q", output)
@@ -188,7 +197,7 @@ func TestHandleServiceCommandHelp(t *testing.T) {
 func TestHandleMaintenanceCommandMode(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), "config.yml")
 	output := captureStdout(t, func() {
-		handleMaintenanceCommand("mode", "", "", "", configPath)
+		handleMaintenanceCommand("mode", "", "", "", "", configPath)
 	})
 	if !strings.Contains(output, "Current mode: production") {
 		t.Errorf("expected current mode output, got %q", output)
@@ -198,7 +207,7 @@ func TestHandleMaintenanceCommandMode(t *testing.T) {
 func TestHandleMaintenanceCommandSetup(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), "config.yml")
 	output := captureStdout(t, func() {
-		handleMaintenanceCommand("setup", "", "", "", configPath)
+		handleMaintenanceCommand("setup", "", "", "", "", configPath)
 	})
 	if !strings.Contains(output, "Setup complete") {
 		t.Errorf("expected setup completion output, got %q", output)
@@ -206,18 +215,13 @@ func TestHandleMaintenanceCommandSetup(t *testing.T) {
 }
 
 func TestHandleMaintenanceCommandUpdate(t *testing.T) {
+	useEmptyUpdateFeed(t)
+	configPath := filepath.Join(t.TempDir(), "server.yml")
 	output := captureStdout(t, func() {
-		handleMaintenanceCommand("update", "", "", "", "")
+		handleMaintenanceCommand("update", "", "", "", "", configPath)
 	})
-	if !strings.Contains(output, "Checking for updates") {
+	if !strings.Contains(output, "already up to date") {
 		t.Errorf("expected update check output, got %q", output)
-	}
-}
-
-func TestMaintenanceUpdate(t *testing.T) {
-	output := captureStdout(t, maintenanceUpdate)
-	if !strings.Contains(output, "Update feature not yet implemented") {
-		t.Errorf("expected update-not-implemented output, got %q", output)
 	}
 }
 
@@ -266,7 +270,7 @@ func TestHandleMaintenanceCommandBackup(t *testing.T) {
 	flag.Parse()
 
 	output := captureStdout(t, func() {
-		handleMaintenanceCommand("backup", configDir, dataDir, "", "")
+		handleMaintenanceCommand("backup", configDir, dataDir, "", "", "")
 	})
 	if !strings.Contains(output, "Backup created successfully") {
 		t.Errorf("expected backup success output, got %q", output)
@@ -287,29 +291,21 @@ func TestSetApplicationModeInvalidMode(t *testing.T) {
 	runExitingHelper(t, "ANIME_HELPER_INVALID_MODE", "TestSetApplicationModeInvalidModeHelper")
 }
 
-func TestHandleUpdateCommandInvalidBranchHelper(t *testing.T) {
-	if os.Getenv("ANIME_HELPER_INVALID_BRANCH") != "1" {
-		t.Skip("only runs as a subprocess helper")
-	}
+func TestHandleUpdateCommandInvalidBranch(t *testing.T) {
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
 	os.Args = []string{"anime", "nightly"}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	flag.Parse()
-	handleUpdateCommand("branch", config.DefaultConfig())
-}
-
-func TestHandleUpdateCommandInvalidBranch(t *testing.T) {
-	runExitingHelper(t, "ANIME_HELPER_INVALID_BRANCH", "TestHandleUpdateCommandInvalidBranchHelper")
-}
-
-func TestHandleUpdateCommandUnknownHelper(t *testing.T) {
-	if os.Getenv("ANIME_HELPER_UNKNOWN_UPDATE") != "1" {
-		t.Skip("only runs as a subprocess helper")
+	if err := handleUpdateCommand("branch", config.DefaultConfig(), ""); err == nil {
+		t.Fatal("invalid channel accepted")
 	}
-	handleUpdateCommand("bogus", config.DefaultConfig())
 }
 
 func TestHandleUpdateCommandUnknown(t *testing.T) {
-	runExitingHelper(t, "ANIME_HELPER_UNKNOWN_UPDATE", "TestHandleUpdateCommandUnknownHelper")
+	if err := handleUpdateCommand("bogus", config.DefaultConfig(), ""); err == nil {
+		t.Fatal("unknown command accepted")
+	}
 }
 
 func TestHandleServiceCommandUnknownHelper(t *testing.T) {
@@ -327,7 +323,7 @@ func TestHandleMaintenanceCommandUnknownHelper(t *testing.T) {
 	if os.Getenv("ANIME_HELPER_UNKNOWN_MAINTENANCE") != "1" {
 		t.Skip("only runs as a subprocess helper")
 	}
-	handleMaintenanceCommand("bogus", "", "", "", "")
+	handleMaintenanceCommand("bogus", "", "", "", "", "")
 }
 
 func TestHandleMaintenanceCommandUnknown(t *testing.T) {
@@ -341,7 +337,7 @@ func TestHandleMaintenanceCommandRestoreNoArgsHelper(t *testing.T) {
 	os.Args = []string{"anime"}
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	flag.Parse()
-	handleMaintenanceCommand("restore", "", "", "", "")
+	handleMaintenanceCommand("restore", "", "", "", "", "")
 }
 
 func TestHandleMaintenanceCommandRestoreNoArgs(t *testing.T) {
@@ -356,13 +352,30 @@ func TestHandleUpdateCommandBranchSet(t *testing.T) {
 	flag.Parse()
 
 	cfg := config.DefaultConfig()
+	configPath := filepath.Join(t.TempDir(), "server.yml")
 	output := captureStdout(t, func() {
-		handleUpdateCommand("branch", cfg)
+		if err := handleUpdateCommand("branch", cfg, configPath); err != nil {
+			t.Errorf("set branch: %v", err)
+		}
 	})
 	if !strings.Contains(output, "Update branch set to: beta") {
 		t.Errorf("expected branch set confirmation, got %q", output)
 	}
-	if cfg.Server.UpdateBranch != "beta" {
-		t.Errorf("expected cfg.Server.UpdateBranch to be beta, got %q", cfg.Server.UpdateBranch)
+	if cfg.Server.Update.Branch != "beta" {
+		t.Errorf("expected cfg.Server.Update.Branch to be beta, got %q", cfg.Server.Update.Branch)
 	}
+	loaded, err := config.Load(configPath)
+	if err != nil || loaded.Server.Update.Branch != "beta" {
+		t.Fatalf("persisted branch=%v err=%v", loaded, err)
+	}
+}
+
+func useEmptyUpdateFeed(t *testing.T) {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNotFound) }))
+	previous := updaterClientFactory
+	updaterClientFactory = func() *updater.Client {
+		return &updater.Client{APIBase: server.URL + "/repos/apimgr/anime", HTTP: server.Client(), AllowHTTP: true}
+	}
+	t.Cleanup(func() { updaterClientFactory = previous; server.Close() })
 }

@@ -5,7 +5,7 @@
     <p>Discover wisdom and inspiration from your favorite anime characters. Get random quotes or browse the entire collection.</p>
     <div class="hero-actions">
         <button id="get-quote-btn" class="btn btn-primary btn-lg" onclick="getRandomQuote()">Get Random Quote</button>
-        <a href="/api/v1/quotes" class="btn btn-secondary btn-lg">View All Quotes</a>
+        <a href="/quotes" class="btn btn-secondary btn-lg">View All Quotes</a>
     </div>
 </div>
 
@@ -97,7 +97,7 @@
                 <p>Monitor API status and uptime. Get real-time health information and service statistics.</p>
             </div>
             <div class="card-footer">
-                <code>GET /api/v1/health</code>
+                <code>GET /api/v1/server/healthz</code>
             </div>
         </div>
 
@@ -130,7 +130,7 @@
             <pre><code>curl http://{{.ServerURL}}/api/v1/quotes</code></pre>
 
             <h4 style="margin-top: 24px; margin-bottom: 16px; color: var(--text-primary);">Check API health:</h4>
-            <pre><code>curl http://{{.ServerURL}}/api/v1/health</code></pre>
+            <pre><code>curl http://{{.ServerURL}}/api/v1/server/healthz</code></pre>
 
             <h4 style="margin-top: 24px; margin-bottom: 16px; color: var(--text-primary);">Example Response:</h4>
             <pre><code>{

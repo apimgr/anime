@@ -1,0 +1,44 @@
+name: anime-test
+
+x-logging: &default-logging
+  options:
+    max-size: "5m"
+    max-file: "1"
+  driver: json-file
+
+services:
+  anime:
+    image: ghcr.io/apimgr/anime:devel
+    container_name: anime-test
+    hostname: anime
+    restart: "no"
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      PORT: 80
+      ADDRESS: ::
+      MODE: development
+      DEBUG: "true"
+      CONFIG_DIR: /config/anime
+      DATA_DIR: /data/anime
+      LOGS_DIR: /data/log/anime
+      TZ: ${TZ:-UTC}
+      ENABLE_TOR: "false"
+    volumes:
+      - ./volumes/config:/config:z
+      - ./volumes/data:/data:z
+    ports:
+      - "172.17.0.1:64581:80"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/anime", "--status"]
+      interval: 10s
+      timeout: 15s
+      retries: 3
+      start_period: 10m
+    networks:
+      - anime-test
+
+networks:
+  anime-test:
+    name: anime-test
+    external: false

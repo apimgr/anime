@@ -45,3 +45,4 @@ This task list was rebuilt from `AI.md` because the previous task inventory was 
 - [ ] Review every changed file and remove obsolete code, routes, configuration, and documentation that conflict with AI.md.
 - [ ] Run the prescribed build, test, lint, coverage, security, and integration gates in the primary session and resolve all failures.
 - [ ] Complete `.git/COMMIT_MESS`, run `gitcommit --dir` as the only commit/push path, then inspect and resolve the resulting GitHub CI run.
+- [ ] service.go prints unconditional emoji status output (src/service/service.go:178,179,208,249,267) — gate on NO_COLOR/--color (found by go-lint, pre-existing)

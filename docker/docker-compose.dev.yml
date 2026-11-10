@@ -1,0 +1,44 @@
+name: anime-dev
+
+x-logging: &default-logging
+  options:
+    max-size: "5m"
+    max-file: "1"
+  driver: json-file
+
+services:
+  anime:
+    image: ghcr.io/apimgr/anime:devel
+    container_name: anime-app
+    hostname: anime
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      PORT: 80
+      ADDRESS: ::
+      MODE: development
+      DEBUG: "true"
+      CONFIG_DIR: /config/anime
+      DATA_DIR: /data/anime
+      LOGS_DIR: /data/log/anime
+      TZ: ${TZ:-America/New_York}
+      ENABLE_TOR: "true"
+    volumes:
+      - ./volumes/config:/config
+      - ./volumes/data:/data
+    ports:
+      - "64580:80"
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/anime", "--status"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 10m
+    networks:
+      - anime-dev
+
+networks:
+  anime-dev:
+    name: anime-dev
+    external: false

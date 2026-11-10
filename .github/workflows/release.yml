@@ -56,7 +56,9 @@ jobs:
             echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
           fi
           echo "COMMIT_ID=$(git rev-parse --short=7 HEAD)" >> $GITHUB_ENV
-          echo "BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+          BUILD_EPOCH=$(date -u +%s)
+          echo "BUILD_EPOCH=${BUILD_EPOCH}" >> $GITHUB_ENV
+          echo "BUILD_DATE=$(date -u -d @${BUILD_EPOCH} +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
 
       - name: Build server
         env:
@@ -64,14 +66,18 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          LDFLAGS="-s -w -X 'main.Version=${{ env.VERSION }}' -X 'main.CommitID=${{ env.COMMIT_ID }}' -X 'main.BuildDate=${{ env.BUILD_DATE }}'"
+          LDFLAGS="-s -w -X 'main.Version=${{ env.VERSION }}' -X 'main.CommitID=${{ env.COMMIT_ID }}' -X 'main.BuildEpoch=${{ env.BUILD_EPOCH }}' -X 'main.OfficialSite=${{ vars.OFFICIAL_SITE }}'"
           go build -buildvcs=false -trimpath -ldflags "${LDFLAGS}" -o ${{ env.PROJECT_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./src
+          CLI_LDFLAGS="-s -w -X 'main.Version=${{ env.VERSION }}' -X 'main.CommitID=${{ env.COMMIT_ID }}' -X 'main.BuildEpoch=${{ env.BUILD_EPOCH }}'"
+          go build -buildvcs=false -trimpath -ldflags "${CLI_LDFLAGS}" -o ${{ env.PROJECT_NAME }}-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./src/client
 
       - name: Upload server artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: ${{ env.PROJECT_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: ${{ env.PROJECT_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+          path: |
+            ${{ env.PROJECT_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
+            ${{ env.PROJECT_NAME }}-cli-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}
 
   release:
     needs: build

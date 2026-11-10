@@ -20,11 +20,11 @@
             </div>
             <nav id="main-nav" class="header-center" aria-label="Main navigation">
                 <a href="/" {{if eq .Page "home"}}class="active"{{end}}>Home</a>
-                <a href="/api/v1/quotes" {{if eq .Page "quotes"}}class="active"{{end}}>All Quotes</a>
-                <a href="/api/v1/health" {{if eq .Page "health"}}class="active"{{end}}>Health</a>
-                {{if .IsAdmin}}
-                <a href="/admin" {{if eq .Page "admin"}}class="active"{{end}}>Admin</a>
-                {{end}}
+                <a href="/quotes">All Quotes</a>
+                <a href="/server/healthz">Health</a>
+                <a href="/server/docs/swagger">API docs</a>
+                <a href="/server/docs/graphql">GraphQL</a>
+                <a href="/server/about">About</a>
             </nav>
             <div class="header-right">
                 <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark/light theme">

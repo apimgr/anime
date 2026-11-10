@@ -22,8 +22,11 @@ func TestGetDefaultDirs(t *testing.T) {
 	}
 
 	for _, dir := range []string{configDir, dataDir, logsDir} {
-		if !strings.Contains(dir, OrgName) || !strings.Contains(dir, "anime") {
-			t.Errorf("expected dir %q to contain org %q and project %q", dir, OrgName, "anime")
+		if !strings.Contains(dir, "anime") {
+			t.Errorf("expected dir %q to contain project %q", dir, "anime")
+		}
+		if !IsRunningInContainer() && !strings.Contains(dir, OrgName) {
+			t.Errorf("expected native dir %q to contain org %q", dir, OrgName)
 		}
 	}
 }
@@ -34,7 +37,7 @@ func TestEnsureDirAndEnsureDirs(t *testing.T) {
 	dataDir := filepath.Join(base, "data")
 	logsDir := filepath.Join(base, "logs")
 
-	if err := EnsureDir(configDir); err != nil {
+	if err := EnsureDir(configDir, false); err != nil {
 		t.Fatalf("EnsureDir returned error: %v", err)
 	}
 	if info, err := os.Stat(configDir); err != nil || !info.IsDir() {
@@ -100,8 +103,21 @@ func TestEnsureDirsFailsOnLogsDirError(t *testing.T) {
 func TestIsRunningInContainer(t *testing.T) {
 	got := IsRunningInContainer()
 
-	data, err := os.ReadFile("/proc/1/comm")
-	want := err == nil && (string(data) == "tini\n" || string(data) == "tini")
+	want := false
+	for _, marker := range []string{"/.dockerenv", "/run/.containerenv", "/dev/lxc"} {
+		if _, err := os.Stat(marker); err == nil {
+			want = true
+		}
+	}
+	if os.Getenv("container") != "" || os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+		want = true
+	}
+	if data, err := os.ReadFile("/proc/1/comm"); err == nil {
+		switch strings.TrimSpace(string(data)) {
+		case "tini", "dumb-init", "s6-svscan", "runsv", "runsvdir", "catatonit":
+			want = true
+		}
+	}
 	if got != want {
 		t.Errorf("IsRunningInContainer() = %v, want %v", got, want)
 	}
@@ -109,8 +125,27 @@ func TestIsRunningInContainer(t *testing.T) {
 
 func TestGetBackupDir(t *testing.T) {
 	got := GetBackupDir("anime")
-	want := filepath.Join("/mnt/Backups", OrgName, "anime")
+	want := ResolveDefaultDirectories("anime").Backup
 	if got != want {
 		t.Errorf("GetBackupDir() = %q, want %q", got, want)
+	}
+}
+
+func TestResolveDefaultDirectoriesByPlatform(t *testing.T) {
+	linux := resolveDirectories("linux", true, false, "/home/test", "", "", "", "anime")
+	if linux.Config != "/etc/apimgr/anime" || linux.Data != "/var/lib/apimgr/anime" || linux.Cache != "/var/cache/apimgr/anime" || linux.Logs != "/var/log/apimgr/anime" {
+		t.Fatalf("unexpected Linux system directories: %#v", linux)
+	}
+	bsd := resolveDirectories("freebsd", true, false, "/home/test", "", "", "", "anime")
+	if bsd.Config != "/usr/local/etc/apimgr/anime" || bsd.Data != "/var/db/apimgr/anime" {
+		t.Fatalf("unexpected BSD system directories: %#v", bsd)
+	}
+	macos := resolveDirectories("darwin", false, false, "/Users/test", "", "", "", "anime")
+	if macos.Config != "/Users/test/Library/Application Support/apimgr/anime" || macos.Logs != "/Users/test/Library/Logs/apimgr/anime" {
+		t.Fatalf("unexpected macOS user directories: %#v", macos)
+	}
+	container := resolveDirectories("linux", true, true, "/root", "", "", "", "anime")
+	if container.Config != "/config/anime" || container.DB != "/data/db/sqlite" || container.Logs != "/data/log/anime" {
+		t.Fatalf("unexpected container directories: %#v", container)
 	}
 }

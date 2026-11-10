@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"strings"
 	"time"
 )
 
@@ -37,23 +38,17 @@ func NewService(jsonData []byte) (*Service, error) {
 
 // GetRandomQuote returns a random quote
 func (s *Service) GetRandomQuote() interface{} {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	quote, ok := s.GetRandomQuoteRecord()
+	if !ok { return map[string]string{"error": "no quotes available"} }
+	return map[string]interface{}{"anime": quote.Anime, "character": quote.Character, "quote": quote.Quote}
+}
 
-	if len(s.quotes) == 0 {
-		return map[string]string{
-			"error": "no quotes available",
-		}
-	}
-
-	idx := s.rng.Intn(len(s.quotes))
-	q := s.quotes[idx]
-
-	return map[string]interface{}{
-		"anime":     q.Anime,
-		"character": q.Character,
-		"quote":     q.Quote,
-	}
+// GetRandomQuoteRecord returns a random typed quote and reports an empty dataset.
+func (s *Service) GetRandomQuoteRecord() (Quote, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.quotes) == 0 { return Quote{}, false }
+	return s.quotes[s.rng.Intn(len(s.quotes))], true
 }
 
 // GetAllQuotes returns all quotes
@@ -77,4 +72,28 @@ func (s *Service) GetTotalQuotes() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return len(s.quotes)
+}
+
+
+// SearchQuotes returns quotes matching the supplied case-insensitive filters.
+func (s *Service) SearchQuotes(query, animeName, character string) []Quote {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	query = strings.ToLower(strings.TrimSpace(query))
+	animeName = strings.ToLower(strings.TrimSpace(animeName))
+	character = strings.ToLower(strings.TrimSpace(character))
+	results := make([]Quote, 0)
+	for _, quote := range s.quotes {
+		if query != "" && !strings.Contains(strings.ToLower(quote.Quote), query) && !strings.Contains(strings.ToLower(quote.Anime), query) && !strings.Contains(strings.ToLower(quote.Character), query) {
+			continue
+		}
+		if animeName != "" && !strings.Contains(strings.ToLower(quote.Anime), animeName) {
+			continue
+		}
+		if character != "" && !strings.Contains(strings.ToLower(quote.Character), character) {
+			continue
+		}
+		results = append(results, quote)
+	}
+	return results
 }

@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -112,11 +113,14 @@ func TestMigrateYmlToYamlMigratesFromSibling(t *testing.T) {
 func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
 
-	if cfg.Server.Address != "0.0.0.0" {
-		t.Errorf("expected default address 0.0.0.0, got %q", cfg.Server.Address)
+	if cfg.Server.Address != "[::]" {
+		t.Errorf("expected default address [::], got %q", cfg.Server.Address)
 	}
 	if cfg.Server.Mode != "production" {
 		t.Errorf("expected default mode production, got %q", cfg.Server.Mode)
+	}
+	if cfg.Server.Update.Branch != "stable" {
+		t.Errorf("expected stable update channel, got %q", cfg.Server.Update.Branch)
 	}
 	if !cfg.Server.Schedule.Enabled {
 		t.Error("expected schedule enabled by default")
@@ -126,6 +130,30 @@ func TestDefaultConfig(t *testing.T) {
 	}
 	if cfg.WebSecurity.CORS != "*" {
 		t.Errorf("expected default CORS *, got %q", cfg.WebSecurity.CORS)
+	}
+}
+
+func TestLoadLegacyUpdateChannel(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "server.yml")
+	if err := os.WriteFile(path, []byte("server:\n  update_branch: daily\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Server.Update.Branch != "daily" {
+		t.Fatalf("legacy update channel = %q", cfg.Server.Update.Branch)
+	}
+	if err := Save(path, cfg); err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(content), "update_branch:") || !strings.Contains(string(content), "branch: \"daily\"") {
+		t.Fatalf("canonical update channel not written: %s", content)
 	}
 }
 
@@ -139,6 +167,13 @@ func TestLoadCreatesDefaultWhenMissing(t *testing.T) {
 	}
 	if cfg.WebUI.Theme != "dark" {
 		t.Errorf("expected default theme, got %q", cfg.WebUI.Theme)
+	}
+	if !strings.HasPrefix(cfg.Server.Token, "tok_") || len(cfg.Server.Token) != 36 {
+		t.Errorf("expected a generated 32-character operator token, got %q", cfg.Server.Token)
+	}
+	port, err := strconv.Atoi(cfg.Server.Port)
+	if err != nil || port < 64000 || port > 64999 {
+		t.Errorf("expected default port in 64000-64999, got %q", cfg.Server.Port)
 	}
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("expected config file to be created: %v", err)
@@ -169,6 +204,9 @@ web-ui:
 	if cfg.WebUI.Theme != "light" {
 		t.Errorf("expected theme light, got %q", cfg.WebUI.Theme)
 	}
+	if !strings.HasPrefix(cfg.Server.Token, "tok_") || len(cfg.Server.Token) != 36 {
+		t.Errorf("expected missing operator token to be generated, got %q", cfg.Server.Token)
+	}
 }
 
 func TestLoadInvalidYAML(t *testing.T) {
@@ -181,6 +219,31 @@ func TestLoadInvalidYAML(t *testing.T) {
 
 	if _, err := Load(path); err == nil {
 		t.Fatal("expected error for invalid YAML")
+	}
+}
+
+func TestLoadRejectsUnknownFields(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "server.yml")
+	if err := os.WriteFile(path, []byte("server:\n  unknown_setting: true\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(path); err == nil || !strings.Contains(err.Error(), "not found in type") {
+		t.Fatalf("Load error = %v, want unknown field error", err)
+	}
+}
+
+func TestLoadUsesFlexibleBooleanValues(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "server.yml")
+	content := "server:\n  port: \"64580\"\n  schedule:\n    enabled: aye\n  metrics:\n    enabled: nope\n    include_system: on\n    include_app: deny\nweb-ui:\n  notifications:\n    enabled: yup\n"
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if !cfg.Server.Schedule.Enabled || cfg.Server.Metrics.Enabled || !cfg.Server.Metrics.IncludeSystem || cfg.Server.Metrics.IncludeApp || !cfg.WebUI.Notifications.Enabled {
+		t.Fatalf("flexible boolean settings parsed unexpectedly: %#v", cfg)
 	}
 }
 
@@ -309,5 +372,36 @@ func TestFormatStringSlice(t *testing.T) {
 	}
 	if got := formatStringSlice([]string{"/a", "/b"}); got != `["/a", "/b"]` {
 		t.Errorf("unexpected result: %q", got)
+	}
+}
+
+func TestParseBool(t *testing.T) {
+	for _, test := range []struct {
+		value string
+		want  bool
+	}{
+		{value: "1", want: true},
+		{value: "YES", want: true},
+		{value: "enabled", want: true},
+		{value: "oui", want: true},
+		{value: "0", want: false},
+		{value: "No", want: false},
+		{value: "disabled", want: false},
+		{value: "niet", want: false},
+	} {
+		got, err := ParseBool(test.value, !test.want)
+		if err != nil {
+			t.Fatalf("ParseBool(%q) returned error: %v", test.value, err)
+		}
+		if got != test.want {
+			t.Errorf("ParseBool(%q) = %v, want %v", test.value, got, test.want)
+		}
+	}
+
+	if got, err := ParseBool("", true); err != nil || !got {
+		t.Errorf("ParseBool empty default = %v, %v; want true, nil", got, err)
+	}
+	if _, err := ParseBool("maybe", false); err == nil {
+		t.Error("ParseBool accepted an invalid value")
 	}
 }

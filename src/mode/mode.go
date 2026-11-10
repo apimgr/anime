@@ -1,202 +1,216 @@
-// Package mode implements application mode detection and configuration
-// according to the BASE.md specification.
-//
-// Mode Detection Priority (highest to lowest):
-//  1. --mode CLI flag
-//  2. MODE environment variable
-//  3. Default: production
-//
-// Supported modes:
-//   - production: Optimized for production use with security and performance
-//   - development: Optimized for development with debugging and verbose output
 package mode
 
 import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/apimgr/anime/src/config"
 )
 
-// Mode represents an application mode
-type Mode string
+type AppMode string
 
 const (
-	// Production mode: optimized for production use
-	Production Mode = "production"
-
-	// Development mode: optimized for development with debugging enabled
-	Development Mode = "development"
+	AppModeProduction  AppMode = "production"
+	AppModeDevelopment AppMode = "development"
+	AppModeDebug       AppMode = "debug"
 )
 
 var (
-	// currentMode holds the current application mode
-	currentMode Mode = Production
-
-	// mu protects currentMode for thread-safe access
-	mu sync.RWMutex
+	stateMu      sync.RWMutex
+	currentMode  = AppModeProduction
+	debugEnabled bool
 )
 
-// init initializes the mode from environment variable if set
-func init() {
-	if envMode := os.Getenv("MODE"); envMode != "" {
-		if parsed, err := ParseMode(envMode); err == nil {
-			currentMode = parsed
-		}
-	}
-}
-
-// ParseMode parses a mode string and returns the corresponding Mode constant.
-// It accepts: "dev", "development", "prod", "production" (case-insensitive).
-// Returns an error if the mode string is invalid.
-func ParseMode(s string) (Mode, error) {
-	normalized := strings.ToLower(strings.TrimSpace(s))
-
-	switch normalized {
-	case "dev", "development":
-		return Development, nil
+// ParseAppMode normalizes a supported application mode name.
+func ParseAppMode(value string) (AppMode, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "prod", "production":
-		return Production, nil
+		return AppModeProduction, nil
+	case "dev", "devel", "development":
+		return AppModeDevelopment, nil
+	case "debug":
+		return AppModeDebug, nil
 	default:
-		return "", fmt.Errorf("invalid mode: %q (expected: dev, development, prod, or production)", s)
+		return "", fmt.Errorf("invalid application mode %q; expected production, development, or debug", value)
 	}
 }
 
-// Get returns the current application mode.
-// This function is thread-safe.
-func Get() Mode {
-	mu.RLock()
-	defer mu.RUnlock()
-	return currentMode
+// ConfigureAppMode applies CLI, environment, and default mode/debug precedence.
+func ConfigureAppMode(modeFlag string, modeFlagSet bool, debugFlag bool, debugFlagSet bool) error {
+	return ConfigureAppModeWithDefault(string(AppModeProduction), modeFlag, modeFlagSet, debugFlag, debugFlagSet)
 }
 
-// Set sets the application mode.
-// The mode string is parsed using ParseMode and must be valid.
-// Returns an error if the mode string is invalid.
-// This function is thread-safe.
-func Set(modeStr string) error {
-	parsed, err := ParseMode(modeStr)
-	if err != nil {
-		return err
+// ConfigureAppModeWithDefault applies CLI, environment, file, and default precedence.
+func ConfigureAppModeWithDefault(modeDefault string, modeFlag string, modeFlagSet bool, debugFlag bool, debugFlagSet bool) error {
+	modeValue := modeDefault
+	if modeValue == "" {
+		modeValue = string(AppModeProduction)
+	}
+	if environmentMode := os.Getenv("MODE"); environmentMode != "" {
+		modeValue = environmentMode
+	}
+	if modeFlagSet {
+		modeValue = modeFlag
+	}
+	selectedMode := AppModeProduction
+	if modeValue != "" {
+		parsedMode, err := ParseAppMode(modeValue)
+		if err != nil {
+			return err
+		}
+		selectedMode = parsedMode
 	}
 
-	mu.Lock()
-	defer mu.Unlock()
-	currentMode = parsed
+	selectedDebug := selectedMode == AppModeDebug
+	if debugValue, isSet := os.LookupEnv("DEBUG"); isSet {
+		parsedDebug, err := config.ParseBool(debugValue, selectedDebug)
+		if err != nil {
+			return fmt.Errorf("invalid DEBUG environment value: %w", err)
+		}
+		selectedDebug = parsedDebug
+	}
+	if debugFlagSet {
+		selectedDebug = debugFlag
+	}
 
+	stateMu.Lock()
+	currentMode = selectedMode
+	debugEnabled = selectedDebug
+	stateMu.Unlock()
+	updateProfilingSettings(selectedDebug)
 	return nil
 }
 
-// IsDevelopment returns true if the current mode is development.
-// This function is thread-safe.
-func IsDevelopment() bool {
-	return Get() == Development
+// SetAppMode sets an application mode and applies its mode-specific defaults.
+func SetAppMode(value string) error {
+	selectedMode, err := ParseAppMode(value)
+	if err != nil {
+		return err
+	}
+	stateMu.Lock()
+	currentMode = selectedMode
+	debugEnabled = selectedMode == AppModeDebug
+	selectedDebug := debugEnabled
+	stateMu.Unlock()
+	updateProfilingSettings(selectedDebug)
+	return nil
 }
 
-// IsProduction returns true if the current mode is production.
-// This function is thread-safe.
-func IsProduction() bool {
-	return Get() == Production
+// SetDebugEnabled explicitly controls diagnostics independently of app mode.
+func SetDebugEnabled(enabled bool) {
+	stateMu.Lock()
+	debugEnabled = enabled
+	stateMu.Unlock()
+	updateProfilingSettings(enabled)
 }
 
-// ShouldShowDebugEndpoints returns true if debug endpoints should be enabled.
-// Debug endpoints (/debug/pprof/*, /debug/vars) are only available in development mode.
-// This function is thread-safe.
+// GetCurrentAppMode returns the selected runtime mode.
+func GetCurrentAppMode() AppMode {
+	stateMu.RLock()
+	defer stateMu.RUnlock()
+	return currentMode
+}
+
+// IsAppModeDev reports whether the selected runtime mode is development.
+func IsAppModeDev() bool {
+	return GetCurrentAppMode() == AppModeDevelopment
+}
+
+// IsAppModeProd reports whether the selected runtime mode is production.
+func IsAppModeProd() bool {
+	return GetCurrentAppMode() == AppModeProduction
+}
+
+// IsAppModeDebug reports whether the selected runtime mode is debug.
+func IsAppModeDebug() bool {
+	return GetCurrentAppMode() == AppModeDebug
+}
+
+// IsDebugEnabled reports whether explicit debug diagnostics are enabled.
+func IsDebugEnabled() bool {
+	stateMu.RLock()
+	defer stateMu.RUnlock()
+	return debugEnabled
+}
+
+// GetAppModeString returns the mode with its diagnostic state for startup output.
+func GetAppModeString() string {
+	appMode := GetCurrentAppMode()
+	if IsDebugEnabled() {
+		return string(appMode) + " [debugging]"
+	}
+	return string(appMode)
+}
+
+// ShouldShowDebugEndpoints reports whether the debug flag enables diagnostics.
 func ShouldShowDebugEndpoints() bool {
-	return IsDevelopment()
+	return IsDebugEnabled()
 }
 
-// GetErrorDetail returns error details based on the current mode.
-// In development mode, returns the full error message with details.
-// In production mode, returns a generic error message without internal details.
-// This function is thread-safe.
-func GetErrorDetail(err error) string {
+// GetClientErrorDetail selects detailed errors outside production mode.
+func GetClientErrorDetail(err error) string {
 	if err == nil {
 		return ""
 	}
-
-	if IsDevelopment() {
-		// Development mode: return full error details
+	if !IsAppModeProd() {
 		return err.Error()
 	}
-
-	// Production mode: return generic error message
 	return "An internal error occurred"
 }
 
-// GetCacheHeaders returns appropriate cache headers based on the current mode.
-// In development mode: no-cache headers to ensure fresh content
-// In production mode: aggressive caching headers for static files
-// This function is thread-safe.
-func GetCacheHeaders() map[string]string {
-	if IsDevelopment() {
-		// Development mode: disable caching
+// GetHTTPStaticCacheHeaders returns cache headers appropriate to the app mode.
+func GetHTTPStaticCacheHeaders() map[string]string {
+	if IsAppModeDev() || IsAppModeDebug() {
 		return map[string]string{
 			"Cache-Control": "no-cache, no-store, must-revalidate",
 			"Pragma":        "no-cache",
 			"Expires":       "0",
 		}
 	}
+	return map[string]string{"Cache-Control": "public, max-age=31536000, immutable"}
+}
 
-	// Production mode: enable caching (1 year for static files)
-	return map[string]string{
-		"Cache-Control": "public, max-age=31536000, immutable",
+// ApplyHTTPStaticCacheHeaders applies mode-specific static cache headers.
+func ApplyHTTPStaticCacheHeaders(response http.ResponseWriter) {
+	for name, value := range GetHTTPStaticCacheHeaders() {
+		response.Header().Set(name, value)
 	}
 }
 
-// ApplyCacheHeaders applies the appropriate cache headers to an HTTP response
-// based on the current mode.
-// This function is thread-safe.
-func ApplyCacheHeaders(w http.ResponseWriter) {
-	headers := GetCacheHeaders()
-	for key, value := range headers {
-		w.Header().Set(key, value)
-	}
-}
-
-// GetLogLevel returns the appropriate log level for the current mode.
-// Development mode: "debug"
-// Production mode: "info"
-// This function is thread-safe.
-func GetLogLevel() string {
-	if IsDevelopment() {
+// GetAppModeLogLevel returns the default log level for the selected mode.
+func GetAppModeLogLevel() string {
+	if IsAppModeDev() || IsAppModeDebug() {
 		return "debug"
 	}
 	return "info"
 }
 
-// ShouldCacheTemplates returns true if templates should be cached.
-// Templates are cached in production mode but not in development mode
-// to allow for live editing.
-// This function is thread-safe.
-func ShouldCacheTemplates() bool {
-	return IsProduction()
+// ShouldAppModeCacheTemplates reports whether templates use the production cache.
+func ShouldAppModeCacheTemplates() bool {
+	return IsAppModeProd()
 }
 
-// ShouldCacheStaticFiles returns true if static files should be cached.
-// Static files are cached in production mode but not in development mode
-// to allow for live editing.
-// This function is thread-safe.
-func ShouldCacheStaticFiles() bool {
-	return IsProduction()
+// ShouldAppModeCacheStaticFiles reports whether static files use the production cache.
+func ShouldAppModeCacheStaticFiles() bool {
+	return IsAppModeProd()
 }
 
-// ShouldAutoReload returns true if auto-reload should be enabled.
-// Auto-reload is enabled in development mode but disabled in production mode.
-// This function is thread-safe.
-func ShouldAutoReload() bool {
-	return IsDevelopment()
+// ShouldAppModeAutoReload reports whether development template reloading is enabled.
+func ShouldAppModeAutoReload() bool {
+	return IsAppModeDev() || IsAppModeDebug()
 }
 
-// ShouldEnableProfiling returns true if profiling endpoints should be enabled.
-// Profiling is available at /debug/pprof/* in development mode only.
-// This function is thread-safe.
-func ShouldEnableProfiling() bool {
-	return IsDevelopment()
-}
-
-// String returns the string representation of the mode.
-func (m Mode) String() string {
-	return string(m)
+// updateProfilingSettings enables profiling only when debug diagnostics are enabled.
+func updateProfilingSettings(enabled bool) {
+	if enabled {
+		runtime.SetBlockProfileRate(1)
+		runtime.SetMutexProfileFraction(1)
+		return
+	}
+	runtime.SetBlockProfileRate(0)
+	runtime.SetMutexProfileFraction(0)
 }

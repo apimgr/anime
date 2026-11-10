@@ -1,0 +1,70 @@
+site_name: Anime Quotes
+site_description: Public read-only anime quotes API and browser
+site_author: apimgr
+repo_name: apimgr/anime
+repo_url: https://github.com/apimgr/anime
+edit_uri: edit/main/docs/
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: pink
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to automatic mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  font:
+    text: Roboto
+    code: Roboto Mono
+extra_css:
+  - stylesheets/dark.css
+  - stylesheets/light.css
+plugins:
+  - search
+  - minify:
+      minify_html: true
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: installation.md
+    - Configuration: configuration.md
+  - Usage:
+    - API: api.md
+    - CLI: cli.md
+    - Security: security.md
+    - Integrations: integrations.md
+  - Development: development.md
+extra:
+  generator: false

@@ -72,7 +72,7 @@ func throttleMiddleware(maxConcurrent int) func(http.Handler) http.Handler {
 				defer func() { <-semaphore }()
 				next.ServeHTTP(w, r)
 			default:
-				log.Printf("Too many concurrent requests, rejecting: %s %s", r.Method, r.RequestURI)
+				log.Printf("Too many concurrent requests, rejecting: %s %s", r.Method, sanitizeRequestURI(r.RequestURI))
 				http.Error(w, "Service Temporarily Unavailable", http.StatusServiceUnavailable)
 			}
 		})
@@ -105,7 +105,7 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Set standard CORS headers
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("Access-Control-Max-Age", "3600")
 
@@ -141,7 +141,6 @@ func recoverMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-
 
 // Unused but kept for reference
 var _ = fmt.Sprintf

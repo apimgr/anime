@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"crypto/sha256"
+	"crypto/subtle"
 	_ "embed"
 	"flag"
 	"fmt"
@@ -11,39 +14,62 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/apimgr/anime/src/anime"
 	"github.com/apimgr/anime/src/config"
+	"github.com/apimgr/anime/src/database"
+	"github.com/apimgr/anime/src/mode"
 	"github.com/apimgr/anime/src/paths"
 	"github.com/apimgr/anime/src/server"
+	"github.com/apimgr/anime/src/service"
+	"github.com/apimgr/anime/src/updater"
+	"golang.org/x/term"
 )
 
 //go:embed data/dataset.json
 var animeData []byte
 
 var (
-	Version   = "dev"
-	CommitID  = "unknown"
-	BuildDate = "unknown"
+	Version      = "dev"
+	CommitID     = "unknown"
+	BuildEpoch   = "0"
+	OfficialSite = ""
 )
 
 const projectName = "anime"
 
+var updaterClientFactory = updater.NewClient
+
 func main() {
-	// Get default directories
-	configDir, dataDir, logsDir := paths.GetDefaultDirs(projectName)
+	os.Args = append([]string{os.Args[0]}, normalizeUpdateArgs(os.Args[1:])...)
+	// Resolve directory mode before startup initialization and keep it fixed.
+	directories := paths.ResolveDefaultDirectories(projectName)
+	configDir, dataDir, logsDir := directories.Config, directories.Data, directories.Logs
+	cacheDir, backupDir, pidFile, databaseDir := directories.Cache, directories.Backup, directories.PID, directories.DB
 
 	// Command-line flags
 	port := flag.String("port", "", "Server port (overrides config)")
 	address := flag.String("address", "", "Server address (overrides config)")
 	configDirFlag := flag.String("config", "", "Configuration directory")
 	dataDirFlag := flag.String("data", "", "Data directory")
-	logsDirFlag := flag.String("logs", "", "Logs directory")
+	cacheDirFlag := flag.String("cache", "", "Cache directory")
+	logsDirFlag := flag.String("log", "", "Log directory")
+	backupDirFlag := flag.String("backup", "", "Backup directory")
+	pidFileFlag := flag.String("pid", "", "PID file path")
+	baseURLFlag := flag.String("baseurl", "", "URL path prefix")
 	version := flag.Bool("version", false, "Print version information")
+	flag.BoolVar(version, "v", false, "Print version information")
 	status := flag.Bool("status", false, "Check service status (for healthcheck)")
 	help := flag.Bool("help", false, "Show help")
+	flag.BoolVar(help, "h", false, "Show help")
+	debugFlag := flag.Bool("debug", false, "Enable debug logging and debug endpoints")
+	colorFlag := flag.String("color", "auto", "Color output: auto, yes, no")
+	_ = flag.String("lang", "en", "Display language")
+	shell := flag.String("shell", "", "Print shell completions: bash, zsh, fish")
 
 	// Service commands
 	serviceCmd := flag.String("service", "", "Service commands: start, stop, restart, reload, status, --install, --uninstall, --disable, --help")
@@ -52,12 +78,20 @@ func main() {
 	maintenanceCmd := flag.String("maintenance", "", "Maintenance commands: backup, restore, update, mode, setup")
 
 	// Application mode
-	modeFlag := flag.String("mode", "", "Application mode: production, development")
+	modeFlag := flag.String("mode", "", "Application mode: production, development, debug")
 
 	// Update commands
 	updateCmd := flag.String("update", "", "Update commands: check, yes, branch {stable|beta|daily}")
 
 	flag.Parse()
+
+	// --color=no (or TERM=dumb under auto) disables colored output for every component via NO_COLOR; --color=yes overrides an inherited NO_COLOR
+	switch *colorFlag {
+	case "no":
+		_ = os.Setenv("NO_COLOR", "1")
+	case "yes":
+		_ = os.Unsetenv("NO_COLOR")
+	}
 
 	// Handle help flag
 	if *help {
@@ -67,9 +101,18 @@ func main() {
 
 	// Handle version flag
 	if *version {
-		fmt.Printf("%s\n", Version)
+		printVersion()
 		os.Exit(0)
 	}
+
+	if *shell != "" {
+		printShellCommand(*shell, flag.Args())
+		return
+	}
+
+	server.Version = Version
+	server.CommitID = CommitID
+	server.BuildDate = buildDate()
 
 	// Override directories from flags
 	if *configDirFlag != "" {
@@ -77,9 +120,19 @@ func main() {
 	}
 	if *dataDirFlag != "" {
 		dataDir = *dataDirFlag
+		databaseDir = filepath.Join(dataDir, "db")
+	}
+	if *cacheDirFlag != "" {
+		cacheDir = *cacheDirFlag
 	}
 	if *logsDirFlag != "" {
 		logsDir = *logsDirFlag
+	}
+	if *backupDirFlag != "" {
+		backupDir = *backupDirFlag
+	}
+	if *pidFileFlag != "" {
+		pidFile = *pidFileFlag
 	}
 
 	// Override from environment
@@ -88,26 +141,67 @@ func main() {
 	}
 	if envData := os.Getenv("DATA_DIR"); envData != "" && *dataDirFlag == "" {
 		dataDir = envData
+		databaseDir = filepath.Join(dataDir, "db")
 	}
-	if envLogs := os.Getenv("LOGS_DIR"); envLogs != "" && *logsDirFlag == "" {
+	if envCache := os.Getenv("CACHE_DIR"); envCache != "" && *cacheDirFlag == "" {
+		cacheDir = envCache
+	}
+	if envLogs := os.Getenv("LOG_DIR"); envLogs != "" && *logsDirFlag == "" {
 		logsDir = envLogs
 	}
+	if envBackup := os.Getenv("BACKUP_DIR"); envBackup != "" && *backupDirFlag == "" {
+		backupDir = envBackup
+	}
+	if envPID := os.Getenv("PID_FILE"); envPID != "" && *pidFileFlag == "" {
+		pidFile = envPID
+	}
+	if envDatabase := os.Getenv("DATABASE_DIR"); envDatabase != "" {
+		databaseDir = envDatabase
+	}
+
+	directories.Config = configDir
+	directories.Data = dataDir
+	directories.Cache = cacheDir
+	directories.Logs = logsDir
+	directories.Backup = backupDir
+	directories.PID = pidFile
+	directories.DB = databaseDir
 
 	// Ensure directories exist
-	if err := paths.EnsureDirs(configDir, dataDir, logsDir); err != nil {
+	if err := paths.EnsureRuntimeDirectories(directories); err != nil {
 		log.Fatalf("Failed to create directories: %v", err)
 	}
 
 	// Load configuration
 	configPath := filepath.Join(configDir, "server.yml")
+	_, configStatErr := os.Stat(configPath)
+	firstRun := os.IsNotExist(configStatErr)
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
+	}
+	if firstRun {
+		if *port != "" {
+			cfg.Server.Port = *port
+		} else if environmentPort := os.Getenv("PORT"); environmentPort != "" {
+			cfg.Server.Port = environmentPort
+		} else if paths.IsRunningInContainer() {
+			cfg.Server.Port = "80"
+		}
+		if err := config.Save(configPath, cfg); err != nil {
+			log.Fatalf("Failed to save first-run configuration: %v", err)
+		}
+	}
+	if *baseURLFlag != "" {
+		cfg.Server.BaseURL = *baseURLFlag
 	}
 
 	// Handle status flag (for Docker healthcheck)
 	if *status {
 		checkPort := cfg.Server.Port
+		if envPort := os.Getenv("PORT"); envPort != "" {
+			checkPort = envPort
+		}
 		if checkPort == "" {
 			checkPort = "8080"
 		}
@@ -119,15 +213,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Handle mode flag
-	if *modeFlag != "" {
-		setApplicationMode(*modeFlag, configPath)
-		return
-	}
-
 	// Handle update command
 	if *updateCmd != "" {
-		handleUpdateCommand(*updateCmd, cfg)
+		if err := handleUpdateCommand(*updateCmd, cfg, configPath); err != nil {
+			log.Fatalf("Update failed: %v", err)
+		}
 		return
 	}
 
@@ -139,9 +229,24 @@ func main() {
 
 	// Handle maintenance commands
 	if *maintenanceCmd != "" {
-		handleMaintenanceCommand(*maintenanceCmd, configDir, dataDir, logsDir, configPath)
+		handleMaintenanceCommand(*maintenanceCmd, configDir, dataDir, logsDir, backupDir, configPath)
 		return
 	}
+
+	modeFlagSet := false
+	debugFlagSet := false
+	flag.Visit(func(parsedFlag *flag.Flag) {
+		switch parsedFlag.Name {
+		case "mode":
+			modeFlagSet = true
+		case "debug":
+			debugFlagSet = true
+		}
+	})
+	if err := mode.ConfigureAppModeWithDefault(cfg.Server.Mode, *modeFlag, modeFlagSet, *debugFlag, debugFlagSet); err != nil {
+		log.Fatalf("Failed to configure application mode: %v", err)
+	}
+	cfg.Server.Mode = string(mode.GetCurrentAppMode())
 
 	// Determine port (flag > env > config > default)
 	serverPort := cfg.Server.Port
@@ -158,11 +263,16 @@ func main() {
 	serverAddress := cfg.Server.Address
 	if *address != "" {
 		serverAddress = *address
-	} else if envAddr := os.Getenv("ADDRESS"); envAddr != "" {
+	} else if envAddr := os.Getenv("LISTEN"); envAddr != "" {
 		serverAddress = envAddr
 	}
 	if serverAddress == "" {
 		serverAddress = "0.0.0.0"
+	}
+
+	db, err := database.Open(cfg.Server.Database, databaseDir)
+	if err != nil {
+		log.Fatalf("Failed to open application database: %v", err)
 	}
 
 	// Initialize anime service with embedded data
@@ -179,8 +289,9 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
 	// Create and start HTTP server
-	srv, err := server.NewServer(animeService, cfg, serverPort, serverAddress)
+	srv, err := server.NewServer(animeService, cfg, serverPort, serverAddress, db)
 	if err != nil {
+		_ = db.SQL.Close()
 		log.Fatalf("Failed to create server: %v", err)
 	}
 
@@ -206,6 +317,9 @@ func main() {
 				}
 			default:
 				log.Printf("Received signal %v, shutting down...", sig)
+				if err := db.SQL.Close(); err != nil {
+					log.Printf("Failed to close database: %v", err)
+				}
 				log.Println("Shutdown complete")
 				os.Exit(0)
 			}
@@ -219,18 +333,27 @@ func printHelp() {
 Usage: anime [options]
 
 Options:
-  --port PORT          Server port (default: from config or 8080)
-  --address ADDRESS    Server address (default: from config or 0.0.0.0)
+  --port PORT          Server port (default: random 64xxx, 80 in container)
+  --address ADDRESS    Server address (default: from config or [::])
   --config DIR         Configuration directory
   --data DIR           Data directory
-  --logs DIR           Logs directory
-  --version            Print version information
+  --cache DIR          Cache directory
+  --log DIR            Logs directory
+  --backup DIR         Backup directory
+  --pid FILE           PID file path
+  --baseurl PATH       URL path prefix (default: /)
+  -v, --version        Print version information
+  --debug              Enable debug logging and debug endpoints
+  --color MODE         Color output: auto, yes, no
+  --lang LANG          Display language
+  --shell SHELL        Print shell completions: bash, zsh, fish
   --status             Check service status (for healthcheck)
-  --help               Show this help message
+  -h, --help           Show this help message
 
 Mode Commands:
-  --mode production    Set production mode
-  --mode development   Set development mode
+  --mode production    Run in production mode
+  --mode development   Run in development mode
+  --mode debug         Run in debug mode
 
 Update Commands:
   --update check       Check for available updates
@@ -259,18 +382,22 @@ Environment Variables:
   ADDRESS      Server address
   CONFIG_DIR   Configuration directory
   DATA_DIR     Data directory
-  LOGS_DIR     Logs directory
+  CACHE_DIR    Cache directory
+  LOG_DIR      Log directory
+  BACKUP_DIR   Backup directory
+  PID_FILE     PID file path
+  LISTEN       Listen address
 
 Configuration:
   Root:    /etc/apimgr/anime/server.yml
   User:    ~/.config/apimgr/anime/server.yml
-  Docker:  /config/server.yml
+  Docker:  /config/anime/server.yml
 
 `, Version)
 }
 
 func checkHealth(port string) error {
-	url := fmt.Sprintf("http://127.0.0.1:%s/api/v1/health", port)
+	url := fmt.Sprintf("http://127.0.0.1:%s/api/v1/server/healthz", port)
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
@@ -309,7 +436,7 @@ func handleServiceCommand(cmd, configDir string) {
 	}
 }
 
-func handleMaintenanceCommand(cmd, configDir, dataDir, logsDir, configPath string) {
+func handleMaintenanceCommand(cmd, configDir, dataDir, logsDir, backupDir, configPath string) {
 	args := flag.Args()
 
 	switch cmd {
@@ -318,7 +445,6 @@ func handleMaintenanceCommand(cmd, configDir, dataDir, logsDir, configPath strin
 		if len(args) > 0 {
 			backupFile = args[0]
 		} else {
-			backupDir := paths.GetBackupDir(projectName)
 			if err := os.MkdirAll(backupDir, 0755); err != nil {
 				log.Fatalf("Failed to create backup directory: %v", err)
 			}
@@ -333,9 +459,23 @@ func handleMaintenanceCommand(cmd, configDir, dataDir, logsDir, configPath strin
 		}
 		maintenanceRestore(args[0], configDir, dataDir)
 	case "update":
-		maintenanceUpdate()
+		cfg, err := config.Load(configPath)
+		if err != nil {
+			log.Fatalf("Failed to load config: %v", err)
+		}
+		updateCommand := "yes"
+		if len(args) > 0 {
+			updateCommand = args[0]
+		}
+		if err := handleUpdateCommand(updateCommand, cfg, configPath); err != nil {
+			log.Fatalf("Update failed: %v", err)
+		}
 	case "mode":
-		showCurrentMode(configPath)
+		if len(args) == 0 {
+			showCurrentMode(configPath)
+			return
+		}
+		setApplicationMode(args[0], configPath)
 	case "setup":
 		runInitialSetup(configPath)
 	default:
@@ -343,6 +483,37 @@ func handleMaintenanceCommand(cmd, configDir, dataDir, logsDir, configPath strin
 		fmt.Println("Available commands: backup, restore, update, mode, setup")
 		os.Exit(1)
 	}
+}
+
+func setApplicationMode(value, configPath string) {
+	selectedMode, err := mode.ParseAppMode(value)
+	if err != nil {
+		log.Fatalf("Invalid application mode: %v", err)
+	}
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+	if !paths.IsElevated() {
+		fmt.Print("Operator token: ")
+		provided, err := term.ReadPassword(int(os.Stdin.Fd()))
+		fmt.Println()
+		if err != nil {
+			log.Fatalf("Failed to read operator token: %v", err)
+		}
+		providedHash := sha256.Sum256(provided)
+		configuredHash := sha256.Sum256([]byte(cfg.Server.Token))
+		valid := subtle.ConstantTimeCompare(providedHash[:], configuredHash[:])
+		valid &= subtle.ConstantTimeEq(int32(len(provided)), int32(len(cfg.Server.Token)))
+		if cfg.Server.Token == "" || valid != 1 {
+			log.Fatal("Invalid credentials")
+		}
+	}
+	cfg.Server.Mode = string(selectedMode)
+	if err := config.Save(configPath, cfg); err != nil {
+		log.Fatalf("Failed to save application mode: %v", err)
+	}
+	fmt.Printf("Application mode set to: %s\n", selectedMode)
 }
 
 // Service management functions
@@ -525,34 +696,7 @@ func maintenanceRestore(backupFile, configDir, dataDir string) {
 	fmt.Println("Restore completed successfully")
 }
 
-func maintenanceUpdate() {
-	fmt.Println("Checking for updates...")
-	fmt.Printf("Current version: %s\n", Version)
-	fmt.Println("Update feature not yet implemented")
-	fmt.Println("Visit https://github.com/apimgr/anime/releases for the latest version")
-}
-
 // setApplicationMode sets the application mode
-func setApplicationMode(mode, configPath string) {
-	if mode != "production" && mode != "development" {
-		fmt.Printf("Invalid mode: %s\n", mode)
-		fmt.Println("Valid modes: production, development")
-		os.Exit(1)
-	}
-
-	cfg, err := config.Load(configPath)
-	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
-	}
-
-	cfg.Server.Mode = mode
-	if err := config.Save(configPath, cfg); err != nil {
-		log.Fatalf("Failed to save config: %v", err)
-	}
-
-	fmt.Printf("Application mode set to: %s\n", mode)
-}
-
 // showCurrentMode displays the current application mode
 func showCurrentMode(configPath string) {
 	cfg, err := config.Load(configPath)
@@ -586,37 +730,107 @@ func runInitialSetup(configPath string) {
 }
 
 // handleUpdateCommand handles update-related commands
-func handleUpdateCommand(cmd string, cfg *config.Config) {
+func handleUpdateCommand(cmd string, cfg *config.Config, configPath string) error {
 	args := flag.Args()
 
 	switch cmd {
 	case "check":
-		fmt.Println("Checking for updates...")
-		fmt.Printf("Current version: %s\n", Version)
-		fmt.Printf("Update branch: %s\n", cfg.Server.UpdateBranch)
-		fmt.Println("No updates available (update checking not implemented)")
+		release, err := checkForUpdate(cfg)
+		if err != nil {
+			return err
+		}
+		if release == nil {
+			fmt.Printf("%s is up to date on the %s channel.\n", Version, cfg.Server.Update.Branch)
+			return nil
+		}
+		fmt.Printf("Update available: %s (current: %s)\n", release.TagName, Version)
+		return nil
 	case "yes":
-		fmt.Println("Installing updates...")
-		fmt.Println("Update installation not implemented")
+		release, err := checkForUpdate(cfg)
+		if err != nil {
+			return err
+		}
+		if release == nil {
+			fmt.Printf("%s is already up to date.\n", Version)
+			return nil
+		}
+		executable, err := os.Executable()
+		if err != nil {
+			return fmt.Errorf("locate current executable: %w", err)
+		}
+		client := updater.NewClient()
+		if err := client.Install(context.Background(), release, executable); err != nil {
+			return err
+		}
+		fmt.Printf("Installed update %s. Restarting.\n", release.TagName)
+		if updater.IsServiceProcess() {
+			return service.Restart()
+		}
+		return updater.RestartSelf(restartArguments(os.Args[1:]))
 	case "branch":
 		if len(args) == 0 {
-			fmt.Printf("Current update branch: %s\n", cfg.Server.UpdateBranch)
-			fmt.Println("Usage: anime --update branch {stable|beta|daily}")
-			return
+			fmt.Printf("Current update branch: %s\n", cfg.Server.Update.Branch)
+			fmt.Println("Usage: anime --update branch {stable|beta|devel}")
+			return nil
 		}
-		branch := args[0]
-		if branch != "stable" && branch != "beta" && branch != "daily" {
-			fmt.Printf("Invalid branch: %s\n", branch)
-			fmt.Println("Valid branches: stable, beta, daily")
-			os.Exit(1)
+		branch, err := updater.NormalizeBranch(args[0])
+		if err != nil {
+			return err
 		}
-		cfg.Server.UpdateBranch = branch
+		cfg.Server.Update.Branch = branch
+		if err := config.Save(configPath, cfg); err != nil {
+			return fmt.Errorf("save update channel: %w", err)
+		}
 		fmt.Printf("Update branch set to: %s\n", branch)
+		return nil
 	default:
-		fmt.Printf("Unknown update command: %s\n", cmd)
-		fmt.Println("Available commands: check, yes, branch")
-		os.Exit(1)
+		return fmt.Errorf("unknown update command %q; expected check, yes, or branch", cmd)
 	}
+}
+
+func checkForUpdate(cfg *config.Config) (*updater.Release, error) {
+	buildEpoch, err := strconv.ParseInt(BuildEpoch, 10, 64)
+	if err != nil {
+		buildEpoch = 0
+	}
+	client := updaterClientFactory()
+	return client.Check(context.Background(), Version, cfg.Server.Update.Branch, buildEpoch)
+}
+
+func normalizeUpdateArgs(args []string) []string {
+	result := make([]string, 0, len(args))
+	for index, arg := range args {
+		if arg == "--update" && (index+1 == len(args) || strings.HasPrefix(args[index+1], "-")) {
+			result = append(result, "--update=yes")
+		} else {
+			result = append(result, arg)
+		}
+	}
+	return result
+}
+
+func restartArguments(args []string) []string {
+	result := make([]string, 0, len(args))
+	for index := 0; index < len(args); index++ {
+		arg := args[index]
+		if arg == "--update" {
+			if index+1 < len(args) && !strings.HasPrefix(args[index+1], "-") {
+				index++
+			}
+			continue
+		}
+		if strings.HasPrefix(arg, "--update=") || arg == "--maintenance=update" {
+			continue
+		}
+		if arg == "--maintenance" {
+			if index+1 < len(args) && args[index+1] == "update" {
+				index++
+				continue
+			}
+		}
+		result = append(result, arg)
+	}
+	return result
 }
 
 func runCommand(name string, args ...string) {
@@ -625,5 +839,61 @@ func runCommand(name string, args ...string) {
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		log.Printf("Command failed: %s %v: %v", name, args, err)
+	}
+}
+
+func buildDate() string {
+	seconds, err := strconv.ParseInt(BuildEpoch, 10, 64)
+	if err != nil || seconds <= 0 {
+		return "N/A"
+	}
+	return time.Unix(seconds, 0).UTC().Format(time.RFC3339)
+}
+
+func printVersion() {
+	name := filepath.Base(os.Args[0])
+	fmt.Printf("%s %s\nBuilt: %s\nGo: %s\nOS/Arch: %s/%s\n", name, Version, buildDate(), runtime.Version(), runtime.GOOS, runtime.GOARCH)
+}
+
+func printShellCommand(command string, args []string) {
+	shell := ""
+	if len(args) > 0 {
+		shell = args[0]
+	} else {
+		shell = filepath.Base(os.Getenv("SHELL"))
+	}
+	if shell == "" {
+		shell = "bash"
+	}
+	name := filepath.Base(os.Args[0])
+	if command == "help" {
+		fmt.Printf("Shell integration for %s: --shell completions [SHELL] or --shell init [SHELL]\n", name)
+		return
+	}
+	if command == "init" {
+		switch shell {
+		case "bash", "zsh":
+			fmt.Printf("source <(%s --shell completions %s)\n", name, shell)
+		case "fish":
+			fmt.Printf("%s --shell completions fish | source\n", name)
+		default:
+			fmt.Fprintf(os.Stderr, "unsupported shell %q\n", shell)
+			os.Exit(2)
+		}
+		return
+	}
+	if command != "completions" {
+		shell = command
+	}
+	switch shell {
+	case "bash":
+		fmt.Printf("complete -W '--help --version --port --address --config --data --log --mode --service --maintenance --update' %s\n", name)
+	case "zsh":
+		fmt.Printf("#compdef %s\n_arguments '*:command:(--help --version --port --address --config --data --log --mode --service --maintenance --update)'\n", name)
+	case "fish":
+		fmt.Printf("complete -c %s -f -a '--help --version --port --address --config --data --log --mode --service --maintenance --update'\n", name)
+	default:
+		fmt.Fprintf(os.Stderr, "unsupported shell %q\n", shell)
+		os.Exit(2)
 	}
 }

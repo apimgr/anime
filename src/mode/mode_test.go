@@ -1,171 +1,156 @@
 package mode
 
 import (
+	"errors"
 	"net/http/httptest"
 	"testing"
 )
 
 func resetMode(t *testing.T) {
 	t.Helper()
-	mu.Lock()
-	currentMode = Production
-	mu.Unlock()
+	stateMu.Lock()
+	currentMode = AppModeProduction
+	debugEnabled = false
+	stateMu.Unlock()
+	updateProfilingSettings(false)
+	t.Cleanup(func() {
+		stateMu.Lock()
+		currentMode = AppModeProduction
+		debugEnabled = false
+		stateMu.Unlock()
+		updateProfilingSettings(false)
+	})
 }
 
-func TestParseMode(t *testing.T) {
-	tests := []struct {
-		name    string
-		input   string
-		want    Mode
-		wantErr bool
+func TestParseAppMode(t *testing.T) {
+	for _, test := range []struct {
+		input string
+		want  AppMode
 	}{
-		{"dev", "dev", Development, false},
-		{"development", "development", Development, false},
-		{"prod", "prod", Production, false},
-		{"production", "production", Production, false},
-		{"uppercase", "PRODUCTION", Production, false},
-		{"whitespace", "  dev  ", Development, false},
-		{"invalid", "bogus", "", true},
-		{"empty", "", "", true},
+		{input: "prod", want: AppModeProduction},
+		{input: "PRODUCTION", want: AppModeProduction},
+		{input: "dev", want: AppModeDevelopment},
+		{input: "devel", want: AppModeDevelopment},
+		{input: "development", want: AppModeDevelopment},
+		{input: "debug", want: AppModeDebug},
+	} {
+		got, err := ParseAppMode(test.input)
+		if err != nil || got != test.want {
+			t.Errorf("ParseAppMode(%q) = %q, %v; want %q", test.input, got, err, test.want)
+		}
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParseMode(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("ParseMode(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
-			}
-			if got != tt.want {
-				t.Errorf("ParseMode(%q) = %q, want %q", tt.input, got, tt.want)
-			}
-		})
+	if _, err := ParseAppMode("unknown"); err == nil {
+		t.Error("ParseAppMode accepted an unknown mode")
 	}
 }
 
-func TestSetAndGet(t *testing.T) {
+func TestConfigureAppModePriorityAndDebugDefault(t *testing.T) {
 	resetMode(t)
-	defer resetMode(t)
+	t.Setenv("MODE", "production")
+	t.Setenv("DEBUG", "")
+	if err := ConfigureAppMode("dev", true, true, true); err != nil {
+		t.Fatal(err)
+	}
+	if GetCurrentAppMode() != AppModeDevelopment || !IsDebugEnabled() {
+		t.Fatalf("CLI mode/debug priority produced %q, debug=%v", GetCurrentAppMode(), IsDebugEnabled())
+	}
 
-	if err := Set("development"); err != nil {
-		t.Fatalf("Set returned error: %v", err)
+	t.Setenv("MODE", "debug")
+	t.Setenv("DEBUG", "")
+	if err := ConfigureAppMode("", false, false, false); err != nil {
+		t.Fatal(err)
 	}
-	if Get() != Development {
-		t.Errorf("Get() = %q, want %q", Get(), Development)
+	if GetCurrentAppMode() != AppModeDebug || !IsDebugEnabled() {
+		t.Fatalf("MODE=debug with an empty DEBUG value produced %q, debug=%v", GetCurrentAppMode(), IsDebugEnabled())
 	}
 
-	if err := Set("invalid"); err == nil {
-		t.Error("expected error for invalid mode")
+	t.Setenv("DEBUG", "false")
+	if err := ConfigureAppMode("", false, false, false); err != nil {
+		t.Fatal(err)
 	}
-	if Get() != Development {
-		t.Errorf("Get() should remain unchanged after failed Set, got %q", Get())
+	if IsDebugEnabled() {
+		t.Fatal("DEBUG=false did not disable debug diagnostics")
+	}
+
+	t.Setenv("DEBUG", "yes")
+	if err := ConfigureAppMode("", false, false, true); err != nil {
+		t.Fatal(err)
+	}
+	if IsDebugEnabled() {
+		t.Fatal("explicit false CLI debug flag did not override DEBUG")
 	}
 }
 
-func TestIsDevelopmentIsProduction(t *testing.T) {
+func TestConfigureAppModeRejectsInvalidEnvironment(t *testing.T) {
 	resetMode(t)
-	defer resetMode(t)
-
-	if !IsProduction() || IsDevelopment() {
-		t.Error("expected default mode to be production")
+	t.Setenv("MODE", "unknown")
+	if err := ConfigureAppMode("", false, false, false); err == nil {
+		t.Fatal("invalid MODE was accepted")
 	}
-
-	if err := Set("development"); err != nil {
-		t.Fatalf("Set returned error: %v", err)
-	}
-	if !IsDevelopment() || IsProduction() {
-		t.Error("expected mode to be development after Set")
+	t.Setenv("MODE", "production")
+	t.Setenv("DEBUG", "maybe")
+	if err := ConfigureAppMode("", false, false, false); err == nil {
+		t.Fatal("invalid DEBUG was accepted")
 	}
 }
 
-func TestShouldShowDebugEndpoints(t *testing.T) {
+func TestAppModeBehavior(t *testing.T) {
 	resetMode(t)
-	defer resetMode(t)
-
-	if ShouldShowDebugEndpoints() {
-		t.Error("expected debug endpoints disabled in production")
+	if !IsAppModeProd() || ShouldShowDebugEndpoints() {
+		t.Fatal("default mode is not secure production")
 	}
-	Set("development")
-	if !ShouldShowDebugEndpoints() {
-		t.Error("expected debug endpoints enabled in development")
+	if err := SetAppMode("development"); err != nil {
+		t.Fatal(err)
+	}
+	if !IsAppModeDev() || ShouldShowDebugEndpoints() {
+		t.Fatal("development mode enabled debug endpoints or was not selected")
+	}
+	if err := SetAppMode("debug"); err != nil {
+		t.Fatal(err)
+	}
+	if !IsAppModeDebug() || !ShouldShowDebugEndpoints() {
+		t.Fatal("debug mode did not select debug mode and enable diagnostics")
 	}
 }
 
-func TestGetErrorDetail(t *testing.T) {
+func TestGetClientErrorDetail(t *testing.T) {
 	resetMode(t)
-	defer resetMode(t)
-
-	if GetErrorDetail(nil) != "" {
-		t.Error("expected empty string for nil error")
+	err := errors.New("internal failure")
+	if got := GetClientErrorDetail(err); got != "An internal error occurred" {
+		t.Fatalf("production error detail = %q", got)
 	}
-
-	err := errString("boom")
-	if got := GetErrorDetail(err); got != "An internal error occurred" {
-		t.Errorf("expected generic message in production, got %q", got)
+	if err := SetAppMode("development"); err != nil {
+		t.Fatal(err)
 	}
-
-	Set("development")
-	if got := GetErrorDetail(err); got != "boom" {
-		t.Errorf("expected full error message in development, got %q", got)
+	if got := GetClientErrorDetail(err); got != err.Error() {
+		t.Fatalf("development error detail = %q", got)
 	}
 }
 
-type errString string
-
-func (e errString) Error() string { return string(e) }
-
-func TestGetCacheHeadersAndApply(t *testing.T) {
+func TestHTTPStaticCacheHeaders(t *testing.T) {
 	resetMode(t)
-	defer resetMode(t)
-
-	headers := GetCacheHeaders()
-	if headers["Cache-Control"] != "public, max-age=31536000, immutable" {
-		t.Errorf("unexpected production cache header: %v", headers)
+	if got := GetHTTPStaticCacheHeaders()["Cache-Control"]; got != "public, max-age=31536000, immutable" {
+		t.Fatalf("production cache header = %q", got)
 	}
-
-	Set("development")
-	headers = GetCacheHeaders()
-	if headers["Cache-Control"] != "no-cache, no-store, must-revalidate" {
-		t.Errorf("unexpected development cache header: %v", headers)
+	if err := SetAppMode("development"); err != nil {
+		t.Fatal(err)
 	}
-
-	w := httptest.NewRecorder()
-	ApplyCacheHeaders(w)
-	if w.Header().Get("Pragma") != "no-cache" {
-		t.Error("expected Pragma header to be applied")
+	response := httptest.NewRecorder()
+	ApplyHTTPStaticCacheHeaders(response)
+	if got := response.Header().Get("Cache-Control"); got != "no-cache, no-store, must-revalidate" {
+		t.Fatalf("development cache header = %q", got)
 	}
 }
 
-func TestGetLogLevel(t *testing.T) {
+func TestAppModeDefaults(t *testing.T) {
 	resetMode(t)
-	defer resetMode(t)
-
-	if GetLogLevel() != "info" {
-		t.Errorf("expected info in production, got %q", GetLogLevel())
+	if GetAppModeLogLevel() != "info" || !ShouldAppModeCacheTemplates() || !ShouldAppModeCacheStaticFiles() || ShouldAppModeAutoReload() {
+		t.Fatal("unexpected production defaults")
 	}
-	Set("development")
-	if GetLogLevel() != "debug" {
-		t.Errorf("expected debug in development, got %q", GetLogLevel())
+	if err := SetAppMode("development"); err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestCacheAndReloadFlags(t *testing.T) {
-	resetMode(t)
-	defer resetMode(t)
-
-	if !ShouldCacheTemplates() || !ShouldCacheStaticFiles() || ShouldAutoReload() || ShouldEnableProfiling() {
-		t.Error("unexpected production flag values")
-	}
-
-	Set("development")
-	if ShouldCacheTemplates() || ShouldCacheStaticFiles() || !ShouldAutoReload() || !ShouldEnableProfiling() {
-		t.Error("unexpected development flag values")
-	}
-}
-
-func TestModeString(t *testing.T) {
-	if Production.String() != "production" {
-		t.Errorf("expected %q, got %q", "production", Production.String())
-	}
-	if Development.String() != "development" {
-		t.Errorf("expected %q, got %q", "development", Development.String())
+	if GetAppModeLogLevel() != "debug" || ShouldAppModeCacheTemplates() || ShouldAppModeCacheStaticFiles() || !ShouldAppModeAutoReload() {
+		t.Fatal("unexpected development defaults")
 	}
 }

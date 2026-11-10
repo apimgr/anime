@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       - run: go vet ./...
-      - run: staticcheck ./...
+      - run: GOTOOLCHAIN=go1.26.4 staticcheck ./...
 
   test:
     runs-on: ubuntu-latest
@@ -191,17 +191,23 @@ jobs:
             echo "VERSION=devel" >> "$GITHUB_ENV"
           fi
           echo "COMMIT_ID=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_ENV"
-          echo "BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          BUILD_EPOCH=$(date -u +%s)
+          echo "BUILD_EPOCH=${BUILD_EPOCH}" >> "$GITHUB_ENV"
+          echo "BUILD_DATE=$(date -u -d @${BUILD_EPOCH} +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - name: Build linux/amd64 binary
         env:
           GOOS: linux
           GOARCH: amd64
         run: |
-          LDFLAGS="-s -w -X 'main.Version=${{ env.VERSION }}' -X 'main.CommitID=${{ env.COMMIT_ID }}' -X 'main.BuildDate=${{ env.BUILD_DATE }}'"
+          LDFLAGS="-s -w -X 'main.Version=${{ env.VERSION }}' -X 'main.CommitID=${{ env.COMMIT_ID }}' -X 'main.BuildEpoch=${{ env.BUILD_EPOCH }}' -X 'main.OfficialSite=${{ vars.OFFICIAL_SITE }}'"
           go build -buildvcs=false -trimpath -ldflags "${LDFLAGS}" -o anime-linux-amd64 ./src
+          CLI_LDFLAGS="-s -w -X 'main.Version=${{ env.VERSION }}' -X 'main.CommitID=${{ env.COMMIT_ID }}' -X 'main.BuildEpoch=${{ env.BUILD_EPOCH }}'"
+          go build -buildvcs=false -trimpath -ldflags "${CLI_LDFLAGS}" -o anime-cli-linux-amd64 ./src/client
       - name: Upload CI binaries
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: ci-binaries-${{ github.sha }}
-          path: anime-linux-amd64
+          path: |
+            anime-linux-amd64
+            anime-cli-linux-amd64
           retention-days: 7
