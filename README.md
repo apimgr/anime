@@ -49,6 +49,8 @@ The server generates its configuration on first start. Useful environment overri
 | GraphQL explorer | `/server/docs/graphql` | Browser query form |
 | Informational pages | `/server/about`, `/server/help`, `/server/privacy`, `/server/terms` | Public HTML pages |
 
+`/server` redirects to `/server/about`. The privacy page documents browser theme storage and server request logging, including the fact that search terms in request URLs can appear in logs. See [Security](docs/security.md) for the request handling and logging details.
+
 GraphQL fields are `randomQuote` and `quotes(q, anime, character)`. Quote fields are `anime`, `character`, and `quote`.
 
 ## CLI client

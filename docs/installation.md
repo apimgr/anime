@@ -16,6 +16,8 @@ Download the matching static `anime-{os}-{arch}` release artifact, install it on
 
 The companion `anime-cli-{os}-{arch}` binary calls an existing service; pass `--server` or set `ANIME_SERVER_PRIMARY`.
 
+Prebuilt server and CLI artifacts are published for Linux, macOS, Windows, and FreeBSD on amd64 and arm64. The installer scripts are in `scripts/` for Linux, macOS, BSD, and Windows PowerShell. Review a script before running it, and use `scripts/uninstall.sh` to remove supported installations.
+
 ### Updates
 
 Check for a release or install it with checksum verification:
