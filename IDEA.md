@@ -25,6 +25,7 @@ client_binary: anime-cli
 - Public JSON API responses with a consistent success envelope
 - Full web frontend (server-side Go templates, dark/light/auto theme, PWA, mobile-first)
 - Server pages: `/server/about`, `/server/help`, `/server/healthz`, `/server/privacy`, `/server/terms`
+- Informational JSON counterparts at `/api/{api_version}/server/{about,help,privacy,terms}`
 - CLI client (`anime-cli`) for fetching quotes from the terminal
 - OpenAPI/Swagger documentation at `/server/docs/swagger` and machine-readable OpenAPI JSON at `/api/{api_version}/server/swagger` (`/api/swagger` alias)
 - GraphQL explorer at `/server/docs/graphql` and read-only GraphQL queries at `/api/{api_version}/server/graphql` (`/api/graphql` alias)
@@ -58,6 +59,8 @@ There are no user roles. All endpoints are public and require no authentication.
 | `quote` | string — quote text | Public |
 
 No PII is stored or served.
+
+The quote collection is embedded in the binary and is not stored in the runtime database. The server still uses its configured local SQLite database for application state required by the server baseline.
 
 ### Trust boundaries & external services
 

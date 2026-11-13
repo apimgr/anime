@@ -9,3 +9,4 @@ Anime Quotes serves a curated, embedded collection through a server-rendered web
 - [Security](security.md)
 - [Integrations](integrations.md)
 - [Development](development.md)
+- [Translation guide](translating.md)
