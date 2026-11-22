@@ -133,7 +133,7 @@ See the [API reference](docs/api.md) for filters, response formats, route aliase
 - [Development guide](docs/development.md)
 - [Translation guide](docs/translating.md)
 
-The privacy page explains that search terms are sent in request URLs and may appear in request logs. Browser theme preference is stored in a first-party cookie.
+The privacy page explains that search terms are sent in request URLs and may appear in request logs. Browser theme, language, and cookie-consent preferences are stored in first-party cookies; the preferences page can save, sync, or reset them.
 
 ## Disclaimer
 

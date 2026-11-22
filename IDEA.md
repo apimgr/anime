@@ -114,6 +114,8 @@ All routes are public. Quote and informational data routes are read-only; the pr
 | GET | `/api/v1/server/preferences/sync/import` | None | Apply supported browser preferences from direct query values or a `code`; consent and credentials are excluded. |
 | GET | `/api/v1/server/swagger` | None | Return the OpenAPI 3.1 document. |
 | GET, POST | `/api/v1/server/graphql` | None | Execute a read-only query. GET accepts a `query` parameter; POST accepts a JSON object containing `query`. |
+| POST | `/api/v1/server/mcp` | None | Execute the public quote and service tools over MCP Streamable HTTP; `/api/mcp` and `/mcp` are direct aliases. |
+| GET | `/api/v1/server/help/mcp` | None | Return the MCP connection guide and live public tool list. |
 | GET | `/api/v1/{random,quotes,stats}.txt` | None | Return the corresponding result as plain text. |
 | GET | `/api/v1/server/healthz.txt` | None | Return health status as plain text; HTTP 503 indicates unhealthy status. |
 | GET | `/api/{healthz,swagger}` | None | Compatibility aliases for health JSON and the OpenAPI document. |
@@ -121,4 +123,4 @@ All routes are public. Quote and informational data routes are read-only; the pr
 | GET | `/api/autodiscover` | None | Return release metadata used by the CLI to discover client downloads. |
 | GET | `/cli/binaries/{file}` | None | Serve a supported CLI release artifact discovered through the update service; downloads are checksum-verified by the client. |
 
-The browser pages are `/`, `/quotes`, `/server/about`, `/server/help`, `/server/healthz`, `/server/preferences`, `/server/preferences/sync`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security`, `/server/security/policy`, `/server/security/thanks`, `/server/docs/swagger`, and `/server/docs/graphql`. `/server/preferences/sync` exports preferences; `/server/preferences/sync/import` is an action route that applies valid values and redirects. `/server` redirects to `/server/about`. Static/PWA routes are `/static/*`, `/robots.txt`, `/security.txt`, `/.well-known/security.txt`, `/manifest.json`, and `/sw.js`.
+The browser pages are `/`, `/quotes`, `/server/about`, `/server/help`, `/server/help/mcp`, `/server/healthz`, `/server/preferences`, `/server/preferences/sync`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security`, `/server/security/policy`, `/server/security/thanks`, `/server/docs/swagger`, and `/server/docs/graphql`. `/server/preferences/sync` exports preferences; `/server/preferences/sync/import` is an action route that applies valid values and redirects. `/server` redirects to `/server/about`. Static/PWA routes are `/static/*`, `/robots.txt`, `/security.txt`, `/.well-known/security.txt`, `/manifest.json`, and `/sw.js`.

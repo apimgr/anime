@@ -3,6 +3,7 @@
 - REST API: see [API reference](api.md).
 - OpenAPI JSON: `/api/v1/server/swagger` (`/api/swagger` alias).
 - GraphQL: `/api/v1/server/graphql` (`/api/graphql` alias).
+- MCP Streamable HTTP: `/api/v1/server/mcp` (`/api/mcp` and `/mcp` aliases); see the [MCP connection guide](/server/help/mcp).
 - CLI: see [CLI reference](cli.md).
 - Public discovery: robots.txt, PWA manifest, service worker, and security.txt are served by the application.
 
