@@ -13,6 +13,7 @@ repo: https://github.com/apimgr/anime
 license: MIT
 binary: anime
 client_binary: anime-cli
+owner_token: anime_owner_token_4mxwkxfqGg
 
 ## Business logic
 
@@ -25,6 +26,7 @@ client_binary: anime-cli
 - Public JSON API responses with a consistent success envelope
 - Full web frontend (server-side Go templates, dark/light/auto theme, PWA, mobile-first)
 - Server pages: `/server/about`, `/server/help`, `/server/healthz`, `/server/privacy`, `/server/terms`, `/server/dpo`
+- Server security reporting pages, contact reporting, token management, and MCP connection help required by the API baseline
 - Informational JSON counterparts at `/api/{api_version}/server/{about,help,privacy,terms,dpo}`
 - CLI client (`anime-cli`) for fetching quotes from the terminal
 - OpenAPI/Swagger documentation at `/server/docs/swagger` and machine-readable OpenAPI JSON at `/api/{api_version}/server/swagger` (`/api/swagger` alias)
@@ -32,15 +34,15 @@ client_binary: anime-cli
 - CLI client commands for random quote retrieval, listing, and text search; the server URL is explicit because no official site is configured
 
 **Non-goals:**
-- No user accounts, registration, or login of any kind
-- No admin web panel (server configured via `server.yml` only)
+- No human user accounts, profiles, registration, or login. Anonymous owner tokens are still required by the API baseline for MCP access and token management.
+- No admin web panel; operator settings are file-based using the configuration layout required by AI.md.
 - No write/mutation API (quote data is read-only, embedded at build time)
 - No anime episode/character database beyond what appears in quotes
 - No paid tiers, no API keys, no rate-limited access tiers
 
 ### Roles & permissions
 
-There are no user roles. All endpoints are public and require no authentication.
+There are no human user roles or accounts. Public quote reads remain anonymous; owner-token holders manage their own anonymous credential and use the authenticated MCP endpoint. Operator actions use the operator token.
 
 | Actor | Access |
 |-------|--------|
@@ -58,7 +60,7 @@ There are no user roles. All endpoints are public and require no authentication.
 | `character` | string — character name | Public |
 | `quote` | string — quote text | Public |
 
-No PII is stored or served.
+Quote records contain no PII. Contact and security reports can contain a reporter's name, email address, reported URLs, and submitted report content. Security report bodies and researcher contact details are encrypted at rest as required by AI.md; public status pages expose only the permitted triage metadata. Owner records contain opaque identifiers and token metadata; raw owner tokens are never stored or logged.
 
 The quote collection is embedded in the binary and is not stored in the runtime database. The server still uses its configured local SQLite database for application state required by the server baseline.
 
@@ -69,20 +71,24 @@ The quote collection is embedded in the binary and is not stored in the runtime 
 | Quote dataset (embedded at build) | Fully trusted | Static, embedded at compile time |
 | Incoming HTTP requests | **Untrusted** | All query parameters validated |
 
-Normal quote and health requests do not call external services. The explicit `--update` command and CLI discovery/download endpoints consult GitHub Releases; client metadata is cached in memory for five minutes, and downloads are checksum-verified by the CLI.
+Normal quote and health requests do not call external services. The explicit `--update` command and CLI discovery/download endpoints consult GitHub Releases; client metadata is cached in memory for five minutes, and downloads are checksum-verified by the CLI. Configured SMTP, CAPTCHA, webhook, and PGP keyserver integrations are external trust boundaries; failures must not expose submitted report contents or credentials.
 
 ### Threat model & abuse cases
 
-**Primary assets:** the service itself (availability).
+**Primary assets:** service availability; the embedded quote collection; operator credentials and encryption keys; anonymous owner credentials; contact and security report content and researcher contact details.
 
 **Attacker/abuser goals:**
 - DoS via high-rate requests
 - Bulk scraping of the full dataset
+- Theft or replay of owner/operator tokens
+- Spam, malicious links, or forged reports through public contact and security forms
+- Exposure of researcher identity or vulnerability details
 
 **Defenses:**
 - Rate limiting on all endpoints
 - Request size limits on all inputs
-- No user accounts eliminates credential stuffing and privilege escalation entirely
+- Bearer-token validation, CSRF and origin checks, CAPTCHA, report encryption, and abuse controls on applicable forms
+- There are no human accounts or passwords; anonymous owner tokens are credential-only identities, not user profiles.
 
 **Non-threats (explicitly out of scope):**
 - Admin panel compromise — no admin panel exists
@@ -90,8 +96,8 @@ Normal quote and health requests do not call external services. The explicit `--
 
 ### Security decisions & exceptions
 
-- **No authentication on any endpoint**: intentional. Public read-only reference API, except browser preferences which only read or set the caller's theme and language cookies. Rate limiting is the sole abuse-prevention mechanism.
-- **All responses include `Access-Control-Allow-Origin: *`**: intentional. Public data API designed for cross-origin browser use.
+- **Public quote reads**: intentional and anonymous. The MCP endpoint requires the existing API Bearer token; owner tokens support anonymous credential management without creating human accounts.
+- **CORS**: public data API supports cross-origin access by default without credentialed wildcard CORS; explicit origins are required for credentialed browser requests.
 
 ### API routes
 
