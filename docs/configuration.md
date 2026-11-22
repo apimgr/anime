@@ -1,30 +1,54 @@
 # Configuration
 
-The server creates `server.yml` on first run under its configuration directory, generates an operator token, and selects an available port in the `64000`–`64999` range. Encryption material is stored separately in `secrets.yml`; keep both files private. The default directories are selected by `src/paths`; override them with `--config`/`CONFIG_DIR`, `--data`/`DATA_DIR`, `--cache`/`CACHE_DIR`, `--log`/`LOG_DIR`, `--backup`/`BACKUP_DIR`, and `--pid`/`PID_FILE`. `DATABASE_DIR` can select a database directory.
+Configuration is file-backed. The server merges built-in defaults, `server.yml`, ordered files in `yaml.d/`, and `secrets.yml` (last). The database stores application state such as anonymous owners and token records; it is not an operator configuration source.
 
-Server listen settings can be overridden in this order: command-line flags, environment, then `server.yml`. The server uses `PORT` for the port and `LISTEN` for the listen address. Outside the container, first-run configuration selects an available port; the container listens on port `80`.
+## Files and permissions
 
-## Configuration sections
-
-The generated `server.yml` contains these sections:
-
-| Section | Settings |
+| File | Purpose |
 |---|---|
-| `server` | `port`, operator `token`, `fqdn`, `address`, `baseurl`, and `mode` |
-| `server.database` | `driver`, `url`, and `pool.max_open`, `pool.max_idle`, `pool.max_lifetime`, and `pool.max_idle_time` |
-| `server.update` | release `branch`, `auto_install`, `defer_days`, and `cli_min_version` |
-| `server.schedule` | scheduler `enabled` and notification cadence |
-| `server.metrics` | `enabled`, `endpoint`, `include_system`, and `include_app` |
-| `server.logging` | `access_format` and `level` |
-| `server.contact` | Public `admin`, `security`, `abuse`, `dpo`, and `general` email addresses; DPO page uses the DPO email, then the general email, and never publishes the admin address |
-| `server.notifications.email` | SMTP host, port, username, TLS mode, and sender name/address. Supply the SMTP password through `SMTP_PASSWORD` rather than `server.yml` |
-| `server.pages.contact` | Contact page enablement, CAPTCHA mode and keys, success message, and antispam policy (`per_ip`, `per_email`, `global`, `window`, `max_links`, `reject_markup`, `blocked_words`, `blocked_email_domains`, `strikes`, `ban_hours`, and `duplicate_window_hours`) |
-| `web-ui` | `theme`, logo, favicon, and announcement enablement/content |
-| `web-robots` | `allow` and `deny` path lists for crawlers |
-| `web-security` | Admin contact, CORS setting, and HTTPS OpenPGP keyserver list |
+| `server.yml` | Node identity and listen settings, database, cache, TLS, proxy, and cluster settings |
+| `yaml.d/branding.yml` | Branding, SEO, and web UI settings |
+| `yaml.d/web.yml` | Web security, crawler rules, CORS, and URL behavior |
+| `yaml.d/pages.yml` | Page enablement and contact-form policy |
+| `yaml.d/contact.yml` | Public contact destinations and webhooks |
+| `yaml.d/privacy.yml` | Privacy, compliance, and tracking settings |
+| `yaml.d/security.yml` | Security, rate-limit, GeoIP, token, and data settings |
+| `yaml.d/logs.yml` | Log configuration |
+| `yaml.d/metrics.yml` | Metrics configuration |
+| `yaml.d/notifications.yml` | SMTP and notification configuration |
+| `yaml.d/maintenance.yml` | Scheduler, update, backup, and restore settings |
+| `yaml.d/app.yml` | Project-specific settings not assigned to another area file |
+| `secrets.yml` | Credentials only; merged last |
 
-`server.security.encryption_key` is loaded from the area secrets file and protects security-report contact details and AES fallback report bodies. `server.pages.contact.antispam` defaults to 5 accepted reports per IP, 3 per email, and 60 globally per hour; three configured abuse strikes ban an IP for 24 hours. Onion and I2P requests skip IP-based limits and strikes. Security reports are retained for 365 days after closure by default.
+All files are YAML. Drop-ins are merged in byte-wise filename order; maps merge recursively, while a later scalar or list replaces the earlier value. Hidden files, backups, non-YAML files, and subdirectories are ignored. `yaml.d/` uses mode `0700`; configuration files use mode `0600`. Unparseable files are ignored and logged. Invalid values should fall back to their defaults with a warning.
 
-The config decoder rejects unknown fields. Keep the generated token private; it is an operator credential. Public read-only quote routes do not require it. SMTP environment overrides are `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_TLS`, `SMTP_FROM_NAME`, and `SMTP_FROM_EMAIL`; set them in the service/container environment and protect them as credentials where applicable.
+On startup, legacy settings in `server.yml` are migrated into their assigned area files. The original is backed up as `server.yml.bak`; writes use private permissions. If a value already exists in its destination area file, that value takes precedence.
 
-The CLI needs a server URL from `--server`, `ANIME_SERVER_PRIMARY`, or its `cli.yml` profile. No official service host is configured in this repository. The CLI stores configuration in the invoking user's config directory; do not put credentials or private data in a shared system directory.
+## First run and paths
+
+The server creates its configuration directory and operator token on first run. The generated operator token is stored in `secrets.yml`, not `server.yml`; keep the secrets file private. If no listen port is supplied, the server selects an available port in the configured range. The container listens on port `80`.
+
+Default directories are selected by the application. Override them with `--config`/`CONFIG_DIR`, `--data`/`DATA_DIR`, `--cache`/`CACHE_DIR`, `--log`/`LOG_DIR`, `--backup`/`BACKUP_DIR`, `--pid`/`PID_FILE`, and `DATABASE_DIR`. `PORT` and `LISTEN` provide listen defaults. Command-line options take priority over environment and file settings.
+
+## Common settings
+
+| Setting | Area file | Purpose |
+|---|---|---|
+| `server.port`, `server.address`, `server.fqdn`, `server.mode`, `server.baseurl` | `server.yml` | Listen endpoint, public identity, operating mode, and path prefix |
+| `server.database.driver`, `.url`, `.pool.*` | `server.yml` | SQLite or libSQL connection and pool |
+| `server.tokens.max_linked`, `.cookie_max_age`, `.idle_purge_days` | `yaml.d/security.yml` | Owner-token policy |
+| `server.rate_limit.read`, `.strict` | `yaml.d/security.yml` | Public and sensitive-operation limits |
+| `server.pages.contact.enabled`, `.captcha`, `.antispam.*` | `yaml.d/pages.yml` | Contact/report form and abuse controls |
+| `server.contact.*` | `yaml.d/contact.yml` | DPO, general, abuse, admin, and security contacts |
+| `server.notifications.email.smtp.*`, `.from.*` | `yaml.d/notifications.yml` | SMTP connection and sender settings |
+| `server.security.reports.retention_days` | `yaml.d/security.yml` | Closed-report retention |
+| `web.security.report_url`, `.contact`, `.policy`, `.keyservers`, `.publish_pgp_key` | `yaml.d/web.yml` | Security.txt, disclosure policy, and key publication |
+| `web.robots.allow`, `.deny` | `yaml.d/web.yml` | Crawler policy and sitemap inclusion |
+| `web.llms.enabled`, `.include_endpoints`, `.include_schemas`, `.custom_sections` | `yaml.d/web.yml` | LLM discovery output |
+| `server.update.branch`, `.auto_install`, `.defer_days`, `.cli_min_version` | `yaml.d/maintenance.yml` | Release channel and update behavior |
+
+Sensitive values belong in `secrets.yml`, including `server.token`, `server.security.encryption_key`, SMTP passwords, CAPTCHA secret keys, and webhook credentials. Use environment variables only where the deployment explicitly supports them; SMTP overrides are `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_TLS`, `SMTP_FROM_NAME`, and `SMTP_FROM_EMAIL`.
+
+## CLI profiles
+
+The companion client reads a user-scoped `cli.yml` profile. Select a server with `--server`, `ANIME_SERVER_PRIMARY`, or the profile's `server.primary` value. Keep client configuration private and do not place credentials or private data in shared system directories. See [CLI reference](cli.md) for output, cache, logging, and shell integration options.

@@ -1,55 +1,29 @@
 # Translation guide
 
-Anime is currently English-only: the server, API messages, CLI, and browser
-pages do not yet load locale catalogs. The localization baseline required by
-the project specification is not complete, so this guide describes the
-catalog contract and must not be read as a claim that these languages are
-already supported.
+Anime uses embedded locale catalogs shared by the server and CLI. The required language set is English (`en`), Spanish (`es`), French (`fr`), Arabic (`ar`), German (`de`), and Italian (`it`). English is the fallback; Arabic is right-to-left. The selector uses native language names and is available only from `/server/preferences`.
 
-## Required locales
+## Language selection
 
-The minimum supported set is English (`en`), Spanish (`es`), French (`fr`),
-Arabic (`ar`), German (`de`), and Italian (`it`). English is the fallback.
-Arabic is right-to-left; the other required locales are left-to-right. Each
-locale must have a complete catalog with the same message keys and plural
-message categories as English before it can be listed as supported. A partial
-translation must not be selected by the server or CLI.
+The server resolves language in this order:
 
-The catalogs belong in `src/common/i18n/locales/{language}.json` and are
-embedded into the server and CLI. The locale registry is the canonical source
-for language code, native name, direction, and CLDR plural categories. The
-registry, catalog files, runtime language list, preference selector, and
-documented language list must agree. Build-time validation must reject a
-missing locale or mismatched keys.
+1. A supported `?lang=` query value. This selects the language for the request and writes the persistent `lang` cookie.
+2. A supported `lang` cookie.
+3. The best supported match from `Accept-Language`, including regional fallback such as `fr-CA` to `fr`.
+4. English.
+
+Automatic detection does not write a cookie. Unsupported values silently fall back to English. The page's `lang` and `dir` attributes follow the resolved locale.
+
+## Catalog format and validation
+
+Catalogs live at `src/common/i18n/locales/{language}.json` and are embedded in the server and CLI. The locale registry, files, runtime language list, preferences selector, and documentation must describe the same supported set. Every locale must have the same translation keys and interpolation variables as English. Missing keys fall back to English; validation belongs in the normal test suite.
 
 ## Translation workflow
 
-When localization support is implemented:
+1. Add or update the English message key in `en.json`.
+2. Add its translated value to every supported locale in the same change.
+3. Preserve keys, interpolation variables, plural categories, route names, API field names, command names, and configuration keys.
+4. Use the registered direction and CLDR plural rules for the language.
+5. Update tests and user-facing documentation when the supported set or behavior changes.
+6. Ask a fluent reviewer to check terminology, context, accessibility labels, and legal text before enabling a new locale.
 
-1. Copy the English catalog and translate every human-readable message,
-   including browser UI, errors, health/status labels, consent, legal content,
-   API documentation descriptions, and CLI help and output.
-2. Preserve message keys, placeholders, route names, API field names, command
-   names, and configuration keys. Translate values only.
-3. Preserve the English catalog's plural categories and placeholder names.
-   Use the locale's registered direction and CLDR plural rules.
-4. Add the catalog and registry metadata together. Add the locale to the
-   language table in this guide in the same change, and update the stated
-   supported-language count.
-5. Have a fluent reviewer check terminology, context, accessibility labels,
-   and legal text before enabling the locale.
-
-The application must resolve language in this order: a supported `?lang=`
-value, a supported `lang` cookie, the best supported `Accept-Language` match
-(including regional fallback such as `fr-CA` to `fr`), then English. Missing
-keys fall back to English. Unsupported languages silently resolve to English.
-The language-cookie behavior for `?lang=` is still being reconciled in the
-implementation specification: one rule describes it as a one-shot link, while
-another says it persists the choice. Follow the resolved template contract
-once that contradiction is fixed; automatic detection itself must not persist
-a language cookie.
-
-The language selector belongs only on `/server/preferences`, lists native
-language names, and starts with an Automatic option that identifies the
-detected language. The footer links the active language name to that selector.
-The document language and direction must match the resolved locale.
+Translate all human-readable application strings: web pages, validation and API errors, OpenAPI and GraphQL descriptions, email content, health/status output, consent controls, server and client CLI help and messages, startup banners, and setup prompts. Do not put runtime translations in a second locale directory or fetch locale files from the host filesystem.

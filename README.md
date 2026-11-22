@@ -1,57 +1,27 @@
 # Anime Quotes
 
-Anime Quotes is a public, read-only Go application for browsing a curated collection of anime quotes. Quote data is embedded in the server binary. Visitors can use the server-rendered site, versioned REST API, read-only GraphQL API, or companion CLI. No user account or API key is required.
-
 [![CI](https://github.com/apimgr/anime/actions/workflows/ci.yml/badge.svg)](https://github.com/apimgr/anime/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/apimgr/anime)](https://github.com/apimgr/anime/releases)
 [![License](https://img.shields.io/github/license/apimgr/anime)](LICENSE.md)
 
+## About
+
+Anime Quotes is a full-stack Go application serving anime quotes from a curated, embedded collection. Visitors can browse the server-rendered site, use the versioned REST API or read-only GraphQL API, and access the service with the companion CLI. Public quote reads require no account or token. MCP and token-management operations use anonymous owner tokens; the application has no human accounts.
+
 ## Features
 
-- Random quote retrieval and full collection browsing
-- Case-insensitive search by quote text, anime title, or character
-- Server-rendered, mobile-friendly quote browser
-- REST API with OpenAPI documentation
-- Read-only GraphQL API and browser explorer
+- Random quote retrieval, full collection browsing, and search by quote text, anime, or character
+- REST API with OpenAPI documentation and a read-only GraphQL API with browser explorer
 - Companion `anime-cli` for random, list, and search operations
-- PWA manifest and service worker
+- Server-rendered, responsive web interface, preferences, consent controls, and PWA support
+- Anonymous owner-token management for MCP access and separate linked tokens per client
+- Contact and security reporting with CAPTCHA, abuse controls, encrypted report storage, and OpenPGP support
+- Public discovery through `robots.txt`, `sitemap.xml`, Atom/RSS feeds, `llms.txt`, and canonical `security.txt`
 - Optional Tor hidden service in the production Docker Compose deployment
-- Anonymous access with request limits and no write API
 
-## Install
+## Production
 
-Download the server and companion CLI binaries for your platform from [GitHub Releases](https://github.com/apimgr/anime/releases/latest).
-
-| Platform | Architectures | Server artifact | CLI artifact |
-|---|---|---|---|
-| Linux | amd64, arm64 | `anime-linux-{arch}` | `anime-cli-linux-{arch}` |
-| macOS | amd64, arm64 | `anime-darwin-{arch}` | `anime-cli-darwin-{arch}` |
-| Windows | amd64, arm64 | `anime-windows-{arch}.exe` | `anime-cli-windows-{arch}.exe` |
-| FreeBSD | amd64, arm64 | `anime-freebsd-{arch}` | `anime-cli-freebsd-{arch}` |
-
-On Linux, replace `{arch}` with `amd64` or `arm64` to download both binaries. Install them into a directory on `PATH`:
-
-```sh
-curl -q -LSsf https://github.com/apimgr/anime/releases/latest/download/anime-linux-amd64 -o anime
-curl -q -LSsf https://github.com/apimgr/anime/releases/latest/download/anime-cli-linux-amd64 -o anime-cli
-chmod +x anime anime-cli
-sudo install -m 0755 anime anime-cli /usr/local/bin/
-```
-
-On macOS, choose `darwin-amd64` for Intel or `darwin-arm64` for Apple Silicon. Download the matching server and CLI artifacts, make them executable with `chmod +x`, then move them into a directory on `PATH`. If macOS blocks either downloaded file, remove quarantine with `xattr -d com.apple.quarantine ./anime` and `xattr -d com.apple.quarantine ./anime-cli`.
-
-On FreeBSD, choose `freebsd-amd64` or `freebsd-arm64`; the Linux download and install commands above apply with those artifact names.
-
-On Windows, choose `windows-amd64` or `windows-arm64`, download both `.exe` artifacts, and place them in a directory on `PATH`. PowerShell example for amd64:
-
-```powershell
-Invoke-WebRequest https://github.com/apimgr/anime/releases/latest/download/anime-windows-amd64.exe -OutFile anime.exe
-Invoke-WebRequest https://github.com/apimgr/anime/releases/latest/download/anime-cli-windows-amd64.exe -OutFile anime-cli.exe
-```
-
-## Docker
-
-### Compose
+### Docker Compose
 
 Review `docker/docker-compose.yml`, especially its published port and volume paths, then start the service:
 
@@ -59,97 +29,82 @@ Review `docker/docker-compose.yml`, especially its published port and volume pat
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-The service listens on port 80 in the container. Configuration is stored at `/config/anime/server.yml`; data and logs are under `/data/anime` and `/data/log/anime`. The compose file binds host port `64580` on the Docker bridge address.
-Tor is enabled in the production Compose configuration. Its onion address is created in the Tor data volume and shown on `/server/help` after the hidden service is published.
+The service listens on port 80 in the container. Configuration, data, and logs are mounted under `/config/anime`, `/data/anime`, and `/data/log/anime`. The Compose file binds host port `64580` on the Docker bridge address. Tor is enabled in the production Compose configuration; its onion address is created in the Tor data volume and shown on `/server/help` after publication. Set `ENABLE_TOR=false` to disable Tor.
 
-## Server
+### Binary and systemd
 
-### Binary
+Download the server artifact for your platform from [GitHub Releases](https://github.com/apimgr/anime/releases/latest). The server creates its configuration and operator token on first run, then selects an available port when no port is configured. Run `anime --help` for options. To install a systemd service, run `anime --service --install`, then manage it with `systemctl`.
 
-Download the matching server artifact from [GitHub Releases](https://github.com/apimgr/anime/releases), then run:
-
-```sh
-anime --help
-anime --version
-anime --port 8080 --address 127.0.0.1
-```
-
-The server creates `server.yml` on first run, generates an operator token, and selects an available port. For a systemd service, run `anime --service --install` and follow with `systemctl start anime` and `systemctl enable anime` as appropriate for the host.
+| Platform | Architectures | Server artifact |
+|---|---|---|
+| Linux | amd64, arm64 | `anime-linux-{arch}` |
+| macOS | amd64, arm64 | `anime-darwin-{arch}` |
+| Windows | amd64, arm64 | `anime-windows-{arch}.exe` |
+| FreeBSD | amd64, arm64 | `anime-freebsd-{arch}` |
 
 ## Client
 
-Install the matching `anime-cli` artifact from [GitHub Releases](https://github.com/apimgr/anime/releases). The client needs an explicit server URL because this repository does not configure an official hosted service:
+Download the matching `anime-cli` artifact from [GitHub Releases](https://github.com/apimgr/anime/releases). This repository does not define an official hosted service, so provide the server URL explicitly:
 
 ```sh
-anime-cli --server https://anime.example random
-anime-cli --server https://anime.example --output json list
-anime-cli --server https://anime.example search "fullmetal alchemist"
+anime-cli --server https://YOUR_SERVER random
+anime-cli --server https://YOUR_SERVER --output json list
+anime-cli --server https://YOUR_SERVER search "fullmetal alchemist"
 ```
 
-`--server` overrides `ANIME_SERVER_PRIMARY`, which overrides the selected CLI profile. The client only calls public read-only API routes.
+`--server` overrides `ANIME_SERVER_PRIMARY`, which overrides the selected CLI profile. The client uses public read-only quote routes.
 
 ## Configuration
 
-The server reads `server.yml` from its config directory. Directory overrides are `CONFIG_DIR`, `DATA_DIR`, `CACHE_DIR`, `LOG_DIR`, `BACKUP_DIR`, `PID_FILE`, and `DATABASE_DIR`; the corresponding CLI flags include `--config`, `--data`, `--cache`, `--log`, `--backup`, and `--pid`. `PORT` and `LISTEN` provide server listen defaults, and `--port`/`--address` override them.
+The server reads `server.yml`, ordered area files under `yaml.d/`, and `secrets.yml` in its configuration directory. First run generates the operator token in `secrets.yml`; keep that file private. Directory overrides are `CONFIG_DIR`, `DATA_DIR`, `CACHE_DIR`, `LOG_DIR`, `BACKUP_DIR`, `PID_FILE`, and `DATABASE_DIR`, with matching CLI flags where supported. `PORT` and `LISTEN` provide listen defaults, and `--port` and `--address` override them.
 
-See [Configuration](docs/configuration.md) for the server settings, defaults, first-run behavior, and CLI profile details.
+See [Configuration](docs/configuration.md) for area-file placement, defaults, migrations, secrets, and the CLI profile format.
 
 ## API
+
+Public quote reads are anonymous. MCP and token-management routes require an owner Bearer token, except primary-token issuance. All API routes are under `/api/v1` unless noted.
 
 | Method | Route | Description |
 |---|---|---|
 | GET | `/api/v1` and `/api` | API route index |
 | GET | `/api/v1/random` | Return one random quote |
 | GET | `/api/v1/quotes` | List or search quotes with optional `q`, `anime`, and `character` filters |
-| GET | `/api/v1/server/{about,help,privacy,terms}` | Informational page content |
-| GET | `/api/v1/server/healthz` | Bare JSON health object; HTTP 503 when unhealthy |
-| GET, POST | `/api/v1/server/preferences` | Read or update browser-local theme and language preferences |
-| GET | `/api/v1/server/preferences/sync` | Export browser preferences as a URL and share code |
-| GET | `/api/v1/server/preferences/sync/import` | Import supported preferences from a shared URL, query, or code |
-| GET | `/api/v1/server/security` | Security reporting channel and disclosure page links |
-| GET | `/api/v1/server/security/policy` | Disclosure policy |
-| GET | `/api/v1/server/security/thanks` | Security acknowledgments |
-| GET | `/api/v1/server/dpo` | Configured DPO or general privacy contact |
 | GET | `/api/v1/stats` | Runtime and collection statistics |
+| GET | `/api/v1/server/{about,help,privacy,terms,dpo}` | Informational content and privacy contact |
+| GET | `/api/v1/server/contact` | Contact/reporting page data |
+| GET | `/api/v1/server/security` | Security reporting metadata and disclosure links |
+| GET | `/api/v1/server/security/{policy,thanks}` | Disclosure policy and acknowledgments |
+| GET | `/api/v1/server/healthz` | Health object; HTTP 503 when unhealthy |
+| GET, POST | `/api/v1/server/preferences` | Read or update browser-local preferences |
+| GET | `/api/v1/server/preferences/sync` | Export preferences as a share URL and code |
+| GET | `/api/v1/server/preferences/sync/import` | Apply supported preferences from a share URL, query, or code |
+| GET | `/api/v1/server/preferences/tokens` | Token list; values are never returned by list operations |
+| POST | `/api/v1/server/preferences/tokens/primary` | Issue a primary owner token |
+| POST, PATCH, DELETE | `/api/v1/server/preferences/tokens/...` | Reveal, rotate, create, update, or revoke tokens; primary owner required |
+| POST | `/api/v1/server/mcp` | MCP Streamable HTTP; Bearer owner token required |
+| GET | `/api/v1/server/help/mcp` | MCP connection guide and tool list |
 | GET | `/api/v1/server/swagger` | OpenAPI 3.1 JSON |
 | GET, POST | `/api/v1/server/graphql` | Read-only GraphQL query endpoint |
-| POST | `/api/v1/server/mcp` | MCP Streamable HTTP endpoint |
-| GET | `/api/v1/server/help/mcp` | MCP connection guide |
-| GET | `/api/v1/{random,quotes,stats}.txt` | Plain text responses |
-| GET | `/api/v1/server/healthz.txt` and `/api/v1/stats.txt` | Plain text status and statistics |
+| GET | `/api/v1/{random,quotes,stats}.txt` | Plain-text responses |
 | GET | `/api/autodiscover` | CLI release metadata |
-| GET | `/cli/binaries/{file}` | Supported CLI release binary |
+| GET | `/cli/binaries/{file}` | Supported CLI release artifact |
 
-Plain text forms are available by adding `.txt` to the random, quotes, health, and stats routes. `/api/healthz`, `/api/swagger`, `/api/graphql`, `/api/mcp`, and `/mcp` are direct aliases. The HTML browser and standard pages include `/`, `/quotes`, `/server/about`, `/server/help`, `/server/help/mcp`, `/server/healthz`, `/server/preferences`, `/server/preferences/sync`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security`, `/server/security/policy`, `/server/security/thanks`, `/server/docs/swagger`, and `/server/docs/graphql`. The `/server/preferences/sync/import` action applies a shared preference set. `/server` redirects to `/server/about`.
-
-See the [API reference](docs/api.md) for filters, response formats, route aliases, and GraphQL fields.
+Direct aliases include `/api/healthz`, `/api/swagger`, `/api/graphql`, `/api/mcp`, `/mcp`, and `/graphql`. The browser pages include `/`, `/quotes`, the `/server/*` information and preference pages, `/server/contact`, `/server/security`, `/server/help/mcp`, `/server/docs/swagger`, and `/server/docs/graphql`. Token action routes and preference-sync import are POST/GET actions and are not pages. See the [API reference](docs/api.md) for response formats and authentication details.
 
 ## Other
 
 - [Installation](docs/installation.md)
 - [CLI reference](docs/cli.md)
 - [Security model](docs/security.md)
-- [Integrations](docs/integrations.md)
+- [Integrations and discovery](docs/integrations.md)
 - [Development guide](docs/development.md)
 - [Translation guide](docs/translating.md)
 
-The privacy page explains that search terms are sent in request URLs and may appear in request logs. Browser theme, language, and cookie-consent preferences are stored in first-party cookies; the preferences page can save, sync, or reset them.
-
-## Disclaimer
-
-This software is provided "as is" without warranty of any kind. Use at your own risk.
-
-- **No Warranty**: The authors are not responsible for damages, data loss, or issues arising from use of this software.
-- **Third-Party Content**: Quote text remains the property of its respective rights holders.
-- **Third-Party Services**: The explicit update command and CLI release discovery use GitHub Releases and are subject to its terms.
-- **Security**: No software is guaranteed to be free of vulnerabilities.
-- **Production Use**: Evaluate the software and configure the service for your deployment before production use.
-
-By using this software, you acknowledge that you have read and understood this disclaimer.
+The privacy page explains that search terms are sent in request URLs and may appear in request logs. Theme, language, and consent preferences are stored in first-party cookies; preferences can be saved, shared, or reset.
 
 ## Development
 
-Go builds and tests run in `casjaysdev/go:latest` through the Makefile; do not run Go directly on the host.
+Go builds and tests run in the `casjaysdev/go:latest` container through the Makefile; do not run Go directly on the host.
 
 ```sh
 make dev
@@ -158,9 +113,7 @@ make local
 make build
 ```
 
-The Makefile builds server and CLI binaries for Linux, macOS, Windows, and FreeBSD on amd64 and arm64. `make docker` builds and pushes the multi-platform image to the configured registry. `make clean` removes generated build outputs.
-
-The executable scripts in `tests/` cover binary and HTTP behavior separately from Go unit tests. They keep build/runtime data in a project-scoped OS temporary directory and remove it on exit:
+The Makefile builds server and CLI binaries for Linux, macOS, Windows, and FreeBSD on amd64 and arm64. Integration scripts in `tests/` cover binary and HTTP behavior:
 
 ```sh
 ./tests/run_tests.sh
@@ -169,7 +122,19 @@ The executable scripts in `tests/` cover binary and HTTP behavior separately fro
 ./tests/e2e.sh
 ```
 
-`tests/run_tests.sh` prefers Incus when available and otherwise runs Docker integration checks. The browser suite is on-demand and is not part of the commit gate. See [Development](docs/development.md) for prerequisites and details.
+See [Development](docs/development.md) for prerequisites and execution details.
+
+## Disclaimer
+
+This software is provided "as is" without warranty of any kind. Use it at your own risk.
+
+- **No Warranty:** The authors are not responsible for damages, data loss, or issues arising from use of the software.
+- **Third-Party Content:** Quote text remains the property of its respective rights holders.
+- **Third-Party Services:** The explicit update command and CLI release discovery use GitHub Releases and are subject to its terms.
+- **Security:** No software is guaranteed to be free of vulnerabilities.
+- **Production Use:** Evaluate the software and configure the service for your deployment before production use.
+
+By using this software, you acknowledge that you have read and understood this disclaimer.
 
 ## License
 
