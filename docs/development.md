@@ -1,6 +1,6 @@
 # Development
 
-The project uses Go under `src/`. Follow the repository's `AI.md` and `IDEA.md` as the implementation and product specifications. Build and validate Go code through Makefile targets using the `casjaysdev/go:latest` container.
+The project uses Go under `src/`. Follow the repository's `AI.md` and `IDEA.md` as the implementation and product specifications. Build and validate Go code through Makefile targets using the `casjaysdev/go:latest` container. CI workflows are maintained for GitHub Actions, GitLab CI, Gitea Actions, Forgejo Actions, and Jenkins; Go jobs use the maintained Go toolchain image without an in-repository build image.
 
 ```sh
 make dev

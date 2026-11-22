@@ -1,12 +1,10 @@
 # Anime Quotes
 
+Anime Quotes is a public, read-only Go application for browsing a curated collection of anime quotes. Quote data is embedded in the server binary. Visitors can use the server-rendered site, versioned REST API, read-only GraphQL API, or companion CLI. No user account or API key is required.
+
 [![CI](https://github.com/apimgr/anime/actions/workflows/ci.yml/badge.svg)](https://github.com/apimgr/anime/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/apimgr/anime)](https://github.com/apimgr/anime/releases)
 [![License](https://img.shields.io/github/license/apimgr/anime)](LICENSE.md)
-
-## About
-
-Anime Quotes is a public, read-only Go application for browsing a curated collection of anime quotes. Quote data is embedded in the server binary. Visitors can use the server-rendered site, versioned REST API, read-only GraphQL API, or companion CLI. No user account or API key is required.
 
 ## Features
 
@@ -20,9 +18,29 @@ Anime Quotes is a public, read-only Go application for browsing a curated collec
 - Optional Tor hidden service in the production Docker Compose deployment
 - Anonymous access with request limits and no write API
 
-## Production
+## Install
 
-### Docker Compose
+Download the server and companion CLI binaries for your platform from [GitHub Releases](https://github.com/apimgr/anime/releases/latest).
+
+| Platform | Architectures | Server artifact | CLI artifact |
+|---|---|---|---|
+| Linux | amd64, arm64 | `anime-linux-{arch}` | `anime-cli-linux-{arch}` |
+| macOS | amd64, arm64 | `anime-darwin-{arch}` | `anime-cli-darwin-{arch}` |
+| Windows | amd64, arm64 | `anime-windows-{arch}.exe` | `anime-cli-windows-{arch}.exe` |
+| FreeBSD | amd64, arm64 | `anime-freebsd-{arch}` | `anime-cli-freebsd-{arch}` |
+
+On Linux, replace `{arch}` with `amd64` or `arm64`, then install the server binary:
+
+```sh
+curl -LSsf https://github.com/apimgr/anime/releases/latest/download/anime-linux-amd64 -o /usr/local/bin/anime
+chmod +x /usr/local/bin/anime
+```
+
+On macOS, choose `darwin-amd64` for Intel or `darwin-arm64` for Apple Silicon. After downloading either Unix binary, make it executable with `chmod +x`; remove macOS quarantine when needed with `xattr -d com.apple.quarantine /usr/local/bin/anime`.
+
+## Docker
+
+### Compose
 
 Review `docker/docker-compose.yml`, especially its published port and volume paths, then start the service:
 
@@ -32,6 +50,8 @@ docker compose -f docker/docker-compose.yml up -d
 
 The service listens on port 80 in the container. Configuration is stored at `/config/anime/server.yml`; data and logs are under `/data/anime` and `/data/log/anime`. The compose file binds host port `64580` on the Docker bridge address.
 Tor is enabled in the production Compose configuration. Its onion address is created in the Tor data volume and shown on `/server/help` after the hidden service is published.
+
+## Server
 
 ### Binary
 
@@ -70,11 +90,18 @@ See [Configuration](docs/configuration.md) for the server settings, defaults, fi
 | GET | `/api/v1/random` | Return one random quote |
 | GET | `/api/v1/quotes` | List or search quotes with optional `q`, `anime`, and `character` filters |
 | GET | `/api/v1/server/healthz` | Bare JSON health object; HTTP 503 when unhealthy |
+| GET, POST | `/api/v1/server/preferences` | Read or update browser-local theme and language preferences |
+| GET | `/api/v1/server/preferences/sync` | Export browser preferences as a URL and share code |
+| GET | `/api/v1/server/preferences/sync/import` | Import supported preferences from a shared URL, query, or code |
+| GET | `/api/v1/server/security` | Security reporting channel and disclosure page links |
+| GET | `/api/v1/server/security/policy` | Disclosure policy |
+| GET | `/api/v1/server/security/thanks` | Security acknowledgments |
+| GET | `/api/v1/server/dpo` | Configured DPO or general privacy contact |
 | GET | `/api/v1/stats` | Runtime and collection statistics |
 | GET | `/api/v1/server/swagger` | OpenAPI 3.1 JSON |
 | GET, POST | `/api/v1/server/graphql` | Read-only GraphQL query endpoint |
 
-Plain text forms are available by adding `.txt` to the random, quotes, health, and stats routes. `/api/healthz`, `/api/swagger`, and `/api/graphql` are direct aliases. The HTML browser and standard pages are `/`, `/quotes`, `/server/about`, `/server/help`, `/server/healthz`, `/server/privacy`, `/server/terms`, `/server/docs/swagger`, and `/server/docs/graphql`. `/server` redirects to `/server/about`.
+Plain text forms are available by adding `.txt` to the random, quotes, health, and stats routes. `/api/healthz`, `/api/swagger`, and `/api/graphql` are direct aliases. The HTML browser and standard pages include `/`, `/quotes`, `/server/about`, `/server/help`, `/server/healthz`, `/server/preferences`, `/server/preferences/sync`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security`, `/server/security/policy`, `/server/security/thanks`, `/server/docs/swagger`, and `/server/docs/graphql`. The `/server/preferences/sync/import` action applies a shared preference set. `/server` redirects to `/server/about`.
 
 See the [API reference](docs/api.md) for filters, response formats, route aliases, and GraphQL fields.
 
@@ -87,7 +114,19 @@ See the [API reference](docs/api.md) for filters, response formats, route aliase
 - [Development guide](docs/development.md)
 - [Translation guide](docs/translating.md)
 
-The privacy page explains that search terms are sent in request URLs and may appear in request logs. Browser theme preference is stored in local storage.
+The privacy page explains that search terms are sent in request URLs and may appear in request logs. Browser theme preference is stored in a first-party cookie.
+
+## Disclaimer
+
+This software is provided "as is" without warranty of any kind. Use at your own risk.
+
+- **No Warranty**: The authors are not responsible for damages, data loss, or issues arising from use of this software.
+- **Third-Party Content**: Quote text remains the property of its respective rights holders.
+- **Third-Party Services**: The explicit update command and CLI release discovery use GitHub Releases and are subject to its terms.
+- **Security**: No software is guaranteed to be free of vulnerabilities.
+- **Production Use**: Evaluate the software and configure the service for your deployment before production use.
+
+By using this software, you acknowledge that you have read and understood this disclaimer.
 
 ## Development
 
@@ -112,18 +151,6 @@ The executable scripts in `tests/` cover binary and HTTP behavior separately fro
 ```
 
 `run_tests.sh` prefers Incus when available and otherwise runs Docker integration checks. The browser suite is on-demand and is not part of the commit gate. See [Development](docs/development.md) for prerequisites and details.
-
-## Disclaimer
-
-This software is provided "as is" without warranty of any kind. Use at your own risk.
-
-- **No Warranty**: The authors are not responsible for damages, data loss, or issues arising from use of this software.
-- **Third-Party Content**: Quote text remains the property of its respective rights holders.
-- **Third-Party Services**: The explicit update command and CLI release discovery use GitHub Releases and are subject to its terms.
-- **Security**: No software is guaranteed to be free of vulnerabilities.
-- **Production Use**: Evaluate the software and configure the service for your deployment before production use.
-
-By using this software, you acknowledge that you have read and understood this disclaimer.
 
 ## License
 

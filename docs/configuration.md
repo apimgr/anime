@@ -19,6 +19,8 @@ The generated `server.yml` contains these sections:
 | `web-ui` | `theme`, logo, favicon, announcements, and notification enablement |
 | `web-robots` | lists of paths allowed or denied to crawlers |
 | `web-security` | admin contact and CORS setting |
+| `server.contact.dpo` | Public DPO name and email; email falls back to `server.contact.general.email` |
+| `server.contact.general.email` | Public fallback contact for the DPO page; the private admin address is never exposed |
 
 The config decoder rejects unknown fields. Keep the generated token private; it is an operator credential. Public read-only quote routes do not require it.
 

@@ -24,8 +24,8 @@ client_binary: anime-cli
 - Filtering/searching by quote text, anime title, or character name
 - Public JSON API responses with a consistent success envelope
 - Full web frontend (server-side Go templates, dark/light/auto theme, PWA, mobile-first)
-- Server pages: `/server/about`, `/server/help`, `/server/healthz`, `/server/privacy`, `/server/terms`
-- Informational JSON counterparts at `/api/{api_version}/server/{about,help,privacy,terms}`
+- Server pages: `/server/about`, `/server/help`, `/server/healthz`, `/server/privacy`, `/server/terms`, `/server/dpo`
+- Informational JSON counterparts at `/api/{api_version}/server/{about,help,privacy,terms,dpo}`
 - CLI client (`anime-cli`) for fetching quotes from the terminal
 - OpenAPI/Swagger documentation at `/server/docs/swagger` and machine-readable OpenAPI JSON at `/api/{api_version}/server/swagger` (`/api/swagger` alias)
 - GraphQL explorer at `/server/docs/graphql` and read-only GraphQL queries at `/api/{api_version}/server/graphql` (`/api/graphql` alias)
@@ -90,5 +90,35 @@ Normal quote and health requests do not call external services. The explicit `--
 
 ### Security decisions & exceptions
 
-- **No authentication on any endpoint**: intentional. Public read-only reference API. Rate limiting is the sole abuse-prevention mechanism.
+- **No authentication on any endpoint**: intentional. Public read-only reference API, except browser preferences which only read or set the caller's theme and language cookies. Rate limiting is the sole abuse-prevention mechanism.
 - **All responses include `Access-Control-Allow-Origin: *`**: intentional. Public data API designed for cross-origin browser use.
+
+### API routes
+
+All routes are public. Quote and informational data routes are read-only; the preferences endpoint only reads or updates the caller's theme and language cookies and never changes server configuration or quote data. JSON success responses use the `ok`/`data` envelope except the health endpoint, which returns its health document directly. Invalid search terms return an RFC 7807 problem response.
+
+| Method | Path | Auth | Purpose and request/response |
+|--------|------|------|-------------------------------|
+| GET | `/api/v1` and `/api` | None | API index; returns the available route list. |
+| GET | `/api/v1/random` | None | Return one random quote in the JSON success envelope. |
+| GET | `/api/v1/quotes` | None | Return quotes; optional `q`, `anime`, and `character` filters, each up to 256 characters. |
+| GET | `/api/v1/stats` | None | Return collection, runtime, and aggregate request statistics in the JSON success envelope. |
+| GET | `/api/v1/server/{about,help,privacy,terms}` | None | Return the named informational page as JSON. |
+| GET | `/api/v1/server/dpo` | None | Return the configured DPO or general privacy contact and request-specific privacy URL. |
+| GET | `/api/v1/server/security` | None | Return private vulnerability-reporting details, current expiry, and policy and acknowledgments URLs. |
+| GET | `/api/v1/server/security/policy` | None | Return the disclosure policy as Markdown. |
+| GET | `/api/v1/server/security/thanks` | None | Return credited researchers; empty until disclosures are recorded. |
+| GET | `/api/v1/server/healthz` | None | Return service health and public build/status information directly; HTTP 503 indicates unhealthy status. |
+| GET, POST | `/api/v1/server/preferences` | None | Read or update browser-local `theme` (`dark`, `light`, `auto`) and `lang` (`en`) cookie values. Unknown or invalid preferences are reported as ignored. |
+| GET | `/api/v1/server/preferences/sync` | None | Export effective theme and language preferences as a share URL and unpadded base64url code. |
+| GET | `/api/v1/server/preferences/sync/import` | None | Apply supported browser preferences from direct query values or a `code`; consent and credentials are excluded. |
+| GET | `/api/v1/server/swagger` | None | Return the OpenAPI 3.1 document. |
+| GET, POST | `/api/v1/server/graphql` | None | Execute a read-only query. GET accepts a `query` parameter; POST accepts a JSON object containing `query`. |
+| GET | `/api/v1/{random,quotes,stats}.txt` | None | Return the corresponding result as plain text. |
+| GET | `/api/v1/server/healthz.txt` | None | Return health status as plain text; HTTP 503 indicates unhealthy status. |
+| GET | `/api/{healthz,swagger}` | None | Compatibility aliases for health JSON and the OpenAPI document. |
+| GET, POST | `/api/graphql` and `/graphql` | None | Compatibility aliases for the read-only GraphQL endpoint. |
+| GET | `/api/autodiscover` | None | Return release metadata used by the CLI to discover client downloads. |
+| GET | `/cli/binaries/{file}` | None | Serve a supported CLI release artifact discovered through the update service; downloads are checksum-verified by the client. |
+
+The browser pages are `/`, `/quotes`, `/server/about`, `/server/help`, `/server/healthz`, `/server/preferences`, `/server/preferences/sync`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security`, `/server/security/policy`, `/server/security/thanks`, `/server/docs/swagger`, and `/server/docs/graphql`. `/server/preferences/sync` exports preferences; `/server/preferences/sync/import` is an action route that applies valid values and redirects. `/server` redirects to `/server/about`. Static/PWA routes are `/static/*`, `/robots.txt`, `/security.txt`, `/.well-known/security.txt`, `/manifest.json`, and `/sw.js`.

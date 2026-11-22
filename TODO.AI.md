@@ -1,5 +1,8 @@
-# AI.md issues
+# Project implementation backlog
 
-- [ ] AI.md PART 5/8 maps the listen-address environment variable to `LISTEN`, while PART 26's Docker entrypoint and environment examples use `ADDRESS`; PART 26 also uses `LOGS_DIR` where PART 5 defines `LOG_DIR`. Establish one canonical mapping and align the entrypoint, container examples, and configuration table.
-- [ ] AI.md PART 13 around lines 2269–2272 says to include metrics status in public healthz, then says NEVER to include metrics status. Define one rule for metrics status in health responses.
-- [ ] AI.md PART 13 around lines 2255–2257 requires public health to include version, uptime, Tor address, and request counts, while PART 13 around line 5470 limits `/server/healthz` to status only with no connection details. Define the complete public health response fields and align the health contract and examples.
+- [ ] Complete the preferences contract (language, consent, reset and full registry) and implement/register remaining required pages and API mirrors, including contact and MCP help, following the relevant AI.md contracts. The DPO page and JSON mirror now follow the configured DPO/general email fallback.
+- [ ] Replace fixed page metadata and English-only rendering with configured branding, language detection, complete translations, and the shared page shell required by AI.md.
+- [ ] Expand the page registry to every feature-enabled help and preference page, and complete the shell/accessibility conformance checks for every page and status response. The shared shell and negotiated themed error handling are partially implemented.
+- [ ] Complete the configured privacy, terms, and about content models and render them from their defined sources without inventing operator or legal details.
+- [ ] Reconcile the project implementation and docs with remaining applicable AI.md requirements, including deployment, security, observability, and provider workflows; verify all workflows against their actual provider runtimes.
+- [ ] Extend route/page tests to cover all registered pages, API mirrors, internal links, field labels, CSRF forms, heading structure, and error pages; keep all user and operator documentation current as behavior is implemented.
