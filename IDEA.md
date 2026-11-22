@@ -36,9 +36,9 @@ owner_token: anime_owner_token_4mxwkxfqGg
 **Non-goals:**
 - No human user accounts, profiles, registration, or login. Anonymous owner tokens are still required by the API baseline for MCP access and token management.
 - No admin web panel; operator settings are file-based using the configuration layout required by AI.md.
-- No write/mutation API (quote data is read-only, embedded at build time)
+- No write or mutation API for quote data; the quote collection is read-only and embedded at build time. Template-required token management changes credential state only.
 - No anime episode/character database beyond what appears in quotes
-- No paid tiers, no API keys, no rate-limited access tiers
+- No paid tiers or product-specific API key tiers; template-required anonymous owner tokens are credentials, not access tiers. Rate limits apply uniformly as configured by AI.md.
 
 ### Roles & permissions
 
@@ -92,7 +92,8 @@ Normal quote and health requests do not call external services. The explicit `--
 
 **Non-threats (explicitly out of scope):**
 - Admin panel compromise — no admin panel exists
-- Account enumeration — no accounts exist
+
+Owner-token lookup, expiry, and revocation must not expose whether an owner or token exists; the project has anonymous credential identities but no human accounts.
 
 ### Security decisions & exceptions
 
