@@ -24,6 +24,6 @@ Catalogs live at `src/common/i18n/locales/{language}.json` and are embedded in t
 3. Preserve keys, interpolation variables, plural categories, route names, API field names, command names, and configuration keys.
 4. Use the registered direction and CLDR plural rules for the language.
 5. Update tests and user-facing documentation when the supported set or behavior changes.
-6. Ask a fluent reviewer to check terminology, context, accessibility labels, and legal text before enabling a new locale.
+6. Use AI translations for every supported locale and welcome human corrections through the normal contribution flow. Native-speaker review is welcome but is not a merge requirement; preserve the established terminology, context, accessibility meaning, and legal meaning when correcting text.
 
 Translate all human-readable application strings: web pages, validation and API errors, OpenAPI and GraphQL descriptions, email content, health/status output, consent controls, server and client CLI help and messages, startup banners, and setup prompts. Do not put runtime translations in a second locale directory or fetch locale files from the host filesystem.

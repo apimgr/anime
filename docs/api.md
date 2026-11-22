@@ -1,0 +1,53 @@
+# API reference
+
+Public quote reads and public information routes are anonymous. A primary owner Bearer token is required for token management; every MCP request requires a Bearer owner token. API routes ignore browser cookies. Token values are returned only by issue, restore, reveal, and rotation actions, never by list responses.
+
+Successful REST responses use the documented `ok`/`data` envelope, except health responses and JSON-RPC, which use their own formats. Invalid input uses RFC 7807 problem JSON. GraphQL returns its standard `data` and `errors` fields.
+
+## Routes
+
+| Method | Route | Authentication | Description |
+|---|---|---|---|
+| GET | `/api/v1` and `/api` | None | API route index |
+| GET | `/api/v1/random` | None | One random quote |
+| GET | `/api/v1/quotes` | None | List and search quotes using optional `q`, `anime`, and `character` filters |
+| GET | `/api/v1/stats` | None | Runtime and collection statistics |
+| GET | `/api/v1/server/{about,help,privacy,terms,dpo}` | None | Informational content and privacy contact |
+| GET, POST | `/api/v1/server/contact` | None | Contact/report form metadata and submission |
+| GET | `/api/v1/server/security` | None | Security contacts, policy, expiry, and key metadata |
+| GET | `/api/v1/server/security/{policy,thanks}` | None | Disclosure policy and researcher acknowledgments |
+| GET | `/api/v1/server/healthz` | None | Health status; HTTP 503 when unhealthy |
+| GET, POST | `/api/v1/server/preferences` | None | Read or update browser-local preferences |
+| GET | `/api/v1/server/preferences/sync` | None | Export preferences as a share URL and code |
+| GET | `/api/v1/server/preferences/sync/import` | None | Apply supported preferences from a share URL, query, or code |
+| GET | `/api/v1/server/preferences/tokens` | None or owner Bearer | Token page data and masked token list |
+| POST | `/api/v1/server/preferences/tokens/primary` | None | Issue a primary owner token |
+| POST | `/api/v1/server/preferences/tokens/primary/{reveal,rotate}` | Primary owner Bearer | Reveal or rotate the primary token |
+| POST | `/api/v1/server/preferences/tokens` | Primary owner Bearer | Create a linked token |
+| POST | `/api/v1/server/preferences/tokens/{id}/{reveal,rotate}` | Primary owner Bearer | Reveal or rotate a linked token |
+| PATCH | `/api/v1/server/preferences/tokens/{id}` | Primary owner Bearer | Rename a linked token or change its expiry |
+| DELETE | `/api/v1/server/preferences/tokens/{id}` | Primary owner Bearer | Revoke a linked token |
+| POST | `/api/v1/server/mcp` | Owner Bearer | MCP Streamable HTTP JSON-RPC endpoint |
+| GET | `/api/v1/server/help/mcp` | None | MCP connection instructions and live tool list |
+| GET | `/api/v1/server/swagger` | None | OpenAPI 3.1 JSON |
+| GET, POST | `/api/v1/server/graphql` | None | Read-only GraphQL |
+| GET | `/api/v1/{random,quotes,stats}.txt` | None | Plain-text responses |
+| GET | `/api/v1/server/healthz.txt` | None | Health status as plain text |
+| GET | `/api/autodiscover` | None | CLI release discovery metadata |
+| GET | `/cli/binaries/{file}` | None | Supported CLI release artifact |
+
+The primary token is issued through `POST /api/v1/server/preferences/tokens/primary`. The web-only restore and forget actions are `POST /server/preferences/token/restore` and `POST /server/preferences/token/forget`. The web page is `/server/preferences/tokens`.
+
+## Quote filters and formats
+
+The quote list accepts optional case-insensitive `q`, `anime`, and `character` query parameters, each up to 256 characters. `q` searches quote text, anime, and character; the other parameters narrow their corresponding fields. `/quotes` uses the same filters.
+
+Plain-text routes are available for random quote, quote list, health, and statistics. JSON APIs can also be accessed using `/api/healthz`, `/api/swagger`, `/api/graphql`, and `/api/mcp`. GraphQL also has `/graphql`. MCP aliases are `/api/mcp` and `/mcp`.
+
+GraphQL supports `randomQuote { anime character quote }` and `quotes(q: ..., anime: ..., character: ...) { anime character quote }`. POST uses `application/json` with a `query` string; GET supplies `query` in the URL.
+
+## Browser pages
+
+The browser surface includes the quote pages, `/server/about`, `/server/help`, `/server/help/mcp`, `/server/healthz`, `/server/preferences` and its registered sub-pages, `/server/contact`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security` and its policy/thanks pages, and the Swagger and GraphQL explorers. The `/server` route redirects to `/server/about`. State-changing token actions and preference import routes are actions, not pages.
+
+The CLI release discovery endpoint reads GitHub Releases and caches metadata in memory for five minutes. The binary endpoint serves supported artifacts; the CLI verifies downloads against published checksums. Ordinary quote and health requests do not contact GitHub.

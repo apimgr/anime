@@ -93,6 +93,7 @@ Direct aliases include `/api/healthz`, `/api/swagger`, `/api/graphql`, `/api/mcp
 
 ## Other
 
+- **Languages:** Embedded locale catalogs cover English (`en`), Spanish (`es`), French (`fr`), German (`de`), Italian (`it`), and Arabic (`ar`). The server detects browser language preferences and lets visitors choose a language on `/server/preferences`; `anime-cli --lang CODE` selects the request language.
 - [Installation](docs/installation.md)
 - [CLI reference](docs/cli.md)
 - [Security model](docs/security.md)

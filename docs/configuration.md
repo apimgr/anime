@@ -47,6 +47,59 @@ Default directories are selected by the application. Override them with `--confi
 | `web.llms.enabled`, `.include_endpoints`, `.include_schemas`, `.custom_sections` | `yaml.d/web.yml` | LLM discovery output |
 | `server.update.branch`, `.auto_install`, `.defer_days`, `.cli_min_version` | `yaml.d/maintenance.yml` | Release channel and update behavior |
 
+## Branding and page content
+
+`yaml.d/branding.yml` holds `server.branding`, `server.seo`, and `web.ui`. Branding fields include the site title, tagline, description, logo, and favicon. SEO settings control canonical URLs, metadata, social cards, verification tags, sitemap limits, and feed titles and item counts.
+
+Operator-authored page content is optional and uses `server.branding.content`:
+
+```yaml
+server:
+  branding:
+    content:
+      about:
+        format: md
+        body:
+          default: |
+            Run by the Example team.
+          fr: |
+            Géré par l'équipe Example.
+      terms:
+        format: md
+        body: |
+          Terms maintained by the service operator.
+      footer:
+        format: html
+        body: '<p>Powered by <strong>Example</strong></p>'
+```
+
+`header` and `footer` accept sanitized HTML only. `about`, `privacy`, and `terms` accept `md`, `html`, or `txt`; Markdown and HTML are sanitized before rendering. A localized `body` map selects the current language, then `default`; a plain string applies to every language. Each body is limited to 256 KiB. Operator content cannot link to `/server/contact`. About, privacy, and terms content extends the built-in page, except terms content replaces the built-in terms. The footer entry replaces only its branding block; the shared application footer remains.
+
+Privacy and consent settings live in `yaml.d/privacy.yml` under `server.privacy`. `data.sold` controls the privacy notice, consent wording, and CCPA opt-out controls. The same area holds data-sharing descriptions, retention text, cookie categories, consent-banner placement and labels, and manually declared third-party services. Essential cookies are always enabled. Consent messages and labels fall back to built-in translations when their configured values are empty or equal to the built-in English defaults.
+
+```yaml
+server:
+  privacy:
+    data:
+      sold: false
+      stored_on_server: true
+      sharing:
+        - condition: user_initiated
+          when: When a visitor submits a report
+          data: The name, reply address, and report content supplied by the visitor.
+    retention:
+      period: Operational log retention is controlled by the deployment configuration.
+      export_available: true
+      deletion_available: true
+    consent:
+      show_until_acknowledged: true
+      position: bottom
+      show_preferences: true
+      policy:
+        text: Privacy policy
+        url: /server/privacy
+```
+
 Sensitive values belong in `secrets.yml`, including `server.token`, `server.security.encryption_key`, SMTP passwords, CAPTCHA secret keys, and webhook credentials. Use environment variables only where the deployment explicitly supports them; SMTP overrides are `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_TLS`, `SMTP_FROM_NAME`, and `SMTP_FROM_EMAIL`.
 
 ## CLI profiles
