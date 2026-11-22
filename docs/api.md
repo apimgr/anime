@@ -25,11 +25,14 @@ Quote, info, and statistics routes are public and read-only. The preferences end
 | GET | `/api/v1/stats` | Runtime and collection statistics |
 | GET | `/api/v1/stats.txt` | Statistics as plain text |
 | GET | `/api/v1/server/swagger` | OpenAPI 3.1 JSON |
+| POST | `/api/v1/server/mcp` | MCP Streamable HTTP JSON-RPC endpoint |
+| GET | `/api/v1/server/help/mcp` | MCP connection guide and live tool list |
 | GET or POST | `/api/v1/server/graphql` | Read-only GraphQL |
 | GET | `/api/v1/random.txt` | Random quote as plain text |
 | GET | `/api/v1/quotes.txt` | Quote collection as plain text |
 | GET | `/api/healthz` | Direct alias for the current health endpoint |
 | GET | `/api/swagger` | Direct alias for the current OpenAPI document |
+| POST | `/api/mcp` and `/mcp` | Direct aliases for the current MCP endpoint |
 | GET or POST | `/api/graphql` and `/graphql` | Direct aliases for the read-only GraphQL endpoint |
 | GET | `/api/autodiscover` | CLI release discovery metadata |
 | GET | `/cli/binaries/{file}` | CLI release artifact download |
@@ -42,4 +45,4 @@ The CLI discovery endpoint reads release metadata from GitHub Releases and cache
 
 GraphQL supports `randomQuote { anime character quote }` and `quotes(q: ..., anime: ..., character: ...) { anime character quote }`. POST requests use `application/json` with a `query` string. GET requests provide the query in a `query` URL parameter. GraphQL results use the standard GraphQL `data` and `errors` fields.
 
-The public server pages include `/server/about`, `/server/help`, `/server/healthz`, `/server/preferences`, `/server/preferences/sync`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security`, `/server/security/policy`, and `/server/security/thanks`. Their JSON counterparts are available at the matching `/api/v1/server/...` routes. The DPO page uses `server.contact.dpo.email` and falls back to `server.contact.general.email`; it never exposes the admin address. The security overview contains the current expiry and private reporting channel; the report form is not enabled. `/server/preferences/sync/import` is an action route that applies a shared preference set and redirects. `/server` redirects to `/server/about`.
+The public server pages include `/server/about`, `/server/help`, `/server/help/mcp`, `/server/healthz`, `/server/preferences`, `/server/preferences/sync`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security`, `/server/security/policy`, and `/server/security/thanks`. Their JSON counterparts are available at the matching `/api/v1/server/...` routes. The DPO page uses `server.contact.dpo.email` and falls back to `server.contact.general.email`; it never exposes the admin address. The security overview contains current reporting metadata. `/server/preferences/sync/import` is an action route that applies a shared preference set and redirects. `/server` redirects to `/server/about`.

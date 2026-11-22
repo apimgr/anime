@@ -113,12 +113,14 @@ See [Configuration](docs/configuration.md) for the server settings, defaults, fi
 | GET | `/api/v1/stats` | Runtime and collection statistics |
 | GET | `/api/v1/server/swagger` | OpenAPI 3.1 JSON |
 | GET, POST | `/api/v1/server/graphql` | Read-only GraphQL query endpoint |
+| POST | `/api/v1/server/mcp` | MCP Streamable HTTP endpoint |
+| GET | `/api/v1/server/help/mcp` | MCP connection guide |
 | GET | `/api/v1/{random,quotes,stats}.txt` | Plain text responses |
 | GET | `/api/v1/server/healthz.txt` and `/api/v1/stats.txt` | Plain text status and statistics |
 | GET | `/api/autodiscover` | CLI release metadata |
 | GET | `/cli/binaries/{file}` | Supported CLI release binary |
 
-Plain text forms are available by adding `.txt` to the random, quotes, health, and stats routes. `/api/healthz`, `/api/swagger`, and `/api/graphql` are direct aliases. The HTML browser and standard pages include `/`, `/quotes`, `/server/about`, `/server/help`, `/server/healthz`, `/server/preferences`, `/server/preferences/sync`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security`, `/server/security/policy`, `/server/security/thanks`, `/server/docs/swagger`, and `/server/docs/graphql`. The `/server/preferences/sync/import` action applies a shared preference set. `/server` redirects to `/server/about`.
+Plain text forms are available by adding `.txt` to the random, quotes, health, and stats routes. `/api/healthz`, `/api/swagger`, `/api/graphql`, `/api/mcp`, and `/mcp` are direct aliases. The HTML browser and standard pages include `/`, `/quotes`, `/server/about`, `/server/help`, `/server/help/mcp`, `/server/healthz`, `/server/preferences`, `/server/preferences/sync`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security`, `/server/security/policy`, `/server/security/thanks`, `/server/docs/swagger`, and `/server/docs/graphql`. The `/server/preferences/sync/import` action applies a shared preference set. `/server` redirects to `/server/about`.
 
 See the [API reference](docs/api.md) for filters, response formats, route aliases, and GraphQL fields.
 
