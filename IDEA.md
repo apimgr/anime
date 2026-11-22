@@ -46,9 +46,9 @@ There are no human user roles or accounts. Public quote reads remain anonymous; 
 
 | Actor | Access |
 |-------|--------|
-| **Anonymous visitor (browser)** | Full read access to all web pages and API endpoints |
-| **Anonymous API client (curl/CLI)** | Full read access to all API endpoints |
-| **Server operator** | Configures server via `server.yml` only; no web management interface |
+| **Anonymous visitor (browser)** | Read public pages and APIs; issue or restore an owner token and manage it only when holding the primary token |
+| **Anonymous API client (curl/CLI)** | Read public quote APIs without a token; use a Bearer owner token for MCP and owner-token operations |
+| **Server operator** | Uses the operator token for operator actions and edits the configuration files required by AI.md; no web management interface |
 
 ### Data model & sensitivity
 
@@ -60,7 +60,7 @@ There are no human user roles or accounts. Public quote reads remain anonymous; 
 | `character` | string — character name | Public |
 | `quote` | string — quote text | Public |
 
-Quote records contain no PII. Contact and security reports can contain a reporter's name, email address, reported URLs, and submitted report content. Security report bodies and researcher contact details are encrypted at rest as required by AI.md; public status pages expose only the permitted triage metadata. Owner records contain opaque identifiers and token metadata; raw owner tokens are never stored or logged.
+Quote records contain no PII. Contact and security reports can contain a reporter's name, email address, reported URLs, and submitted report content. Security report bodies and researcher contact details are encrypted at rest as required by AI.md; public status pages expose only the permitted triage metadata. Owner records contain opaque identifiers and token metadata; owner tokens are stored only as SHA-256 hashes and encrypted recoverable copies, never in plaintext or logs.
 
 The quote collection is embedded in the binary and is not stored in the runtime database. The server still uses its configured local SQLite database for application state required by the server baseline.
 
@@ -101,7 +101,7 @@ Normal quote and health requests do not call external services. The explicit `--
 
 ### API routes
 
-All routes are public. Quote and informational data routes are read-only; the preferences endpoint only reads or updates the caller's theme and language cookies and never changes server configuration or quote data. JSON success responses use the `ok`/`data` envelope except the health endpoint, which returns its health document directly. Invalid search terms return an RFC 7807 problem response.
+Public quote and informational data routes are read-only. Owner-token issuance and management use the API routes below; MCP requires an API Bearer token. Browser preferences update only the caller's cookies and never change server configuration or quote data. JSON success responses use the `ok`/`data` envelope except health and JSON-RPC endpoints, which follow their documented formats. Invalid input returns the API's RFC 7807 problem response.
 
 | Method | Path | Auth | Purpose and request/response |
 |--------|------|------|-------------------------------|
@@ -116,11 +116,20 @@ All routes are public. Quote and informational data routes are read-only; the pr
 | GET | `/api/v1/server/security/thanks` | None | Return credited researchers; empty until disclosures are recorded. |
 | GET | `/api/v1/server/healthz` | None | Return service health and public build/status information directly; HTTP 503 indicates unhealthy status. |
 | GET, POST | `/api/v1/server/preferences` | None | Read or update browser-local `theme` (`dark`, `light`, `auto`) and `lang` (`en`) cookie values. Unknown or invalid preferences are reported as ignored. |
+| GET | `/api/v1/server/preferences/tokens` | None or owner Bearer | Return the token page/list; token values are never returned by the list API. |
+| POST | `/api/v1/server/preferences/tokens/primary` | None | Issue an anonymous owner and primary token; returns the token and creates no human account. |
+| POST | `/api/v1/server/preferences/tokens/primary/reveal` | Primary owner Bearer | Reveal the primary token. |
+| POST | `/api/v1/server/preferences/tokens/primary/rotate` | Primary owner Bearer | Rotate the primary token and return its replacement. |
+| POST | `/api/v1/server/preferences/tokens` | Primary owner Bearer | Create a linked owner token. |
+| POST | `/api/v1/server/preferences/tokens/{id}/reveal` | Primary owner Bearer | Reveal a linked token. |
+| POST | `/api/v1/server/preferences/tokens/{id}/rotate` | Primary owner Bearer | Rotate a linked token. |
+| PATCH | `/api/v1/server/preferences/tokens/{id}` | Primary owner Bearer | Rename a linked token or change its expiry. |
+| DELETE | `/api/v1/server/preferences/tokens/{id}` | Primary owner Bearer | Revoke a linked token. |
 | GET | `/api/v1/server/preferences/sync` | None | Export effective theme and language preferences as a share URL and unpadded base64url code. |
 | GET | `/api/v1/server/preferences/sync/import` | None | Apply supported browser preferences from direct query values or a `code`; consent and credentials are excluded. |
 | GET | `/api/v1/server/swagger` | None | Return the OpenAPI 3.1 document. |
 | GET, POST | `/api/v1/server/graphql` | None | Execute a read-only query. GET accepts a `query` parameter; POST accepts a JSON object containing `query`. |
-| POST | `/api/v1/server/mcp` | None | Execute the public quote and service tools over MCP Streamable HTTP; `/api/mcp` and `/mcp` are direct aliases. |
+| POST | `/api/v1/server/mcp` | API Bearer | Execute the quote and service tools over MCP Streamable HTTP; `/api/mcp` and `/mcp` are direct aliases. |
 | GET | `/api/v1/server/help/mcp` | None | Return the MCP connection guide and live public tool list. |
 | GET | `/api/v1/{random,quotes,stats}.txt` | None | Return the corresponding result as plain text. |
 | GET | `/api/v1/server/healthz.txt` | None | Return health status as plain text; HTTP 503 indicates unhealthy status. |
