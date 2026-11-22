@@ -18,10 +18,12 @@ The generated `server.yml` contains these sections:
 | `server.logging` | `access_format` and `level` |
 | `server.contact` | Public `admin`, `security`, `abuse`, `dpo`, and `general` email addresses; DPO page uses the DPO email, then the general email, and never publishes the admin address |
 | `server.notifications.email` | SMTP host, port, username, TLS mode, and sender name/address. Supply the SMTP password through `SMTP_PASSWORD` rather than `server.yml` |
-| `server.pages.contact` | Contact page enablement, CAPTCHA mode, and site key |
+| `server.pages.contact` | Contact page enablement, CAPTCHA mode and keys, success message, and antispam policy (`per_ip`, `per_email`, `global`, `window`, `max_links`, `reject_markup`, `blocked_words`, `blocked_email_domains`, `strikes`, `ban_hours`, and `duplicate_window_hours`) |
 | `web-ui` | `theme`, logo, favicon, and announcement enablement/content |
 | `web-robots` | `allow` and `deny` path lists for crawlers |
-| `web-security` | Admin contact and CORS setting |
+| `web-security` | Admin contact, CORS setting, and HTTPS OpenPGP keyserver list |
+
+`server.security.encryption_key` is loaded from the area secrets file and protects security-report contact details and AES fallback report bodies. `server.pages.contact.antispam` defaults to 5 accepted reports per IP, 3 per email, and 60 globally per hour; three configured abuse strikes ban an IP for 24 hours. Onion and I2P requests skip IP-based limits and strikes. Security reports are retained for 365 days after closure by default.
 
 The config decoder rejects unknown fields. Keep the generated token private; it is an operator credential. Public read-only quote routes do not require it. SMTP environment overrides are `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_TLS`, `SMTP_FROM_NAME`, and `SMTP_FROM_EMAIL`; set them in the service/container environment and protect them as credentials where applicable.
 
