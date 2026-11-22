@@ -29,14 +29,25 @@ Download the server and companion CLI binaries for your platform from [GitHub Re
 | Windows | amd64, arm64 | `anime-windows-{arch}.exe` | `anime-cli-windows-{arch}.exe` |
 | FreeBSD | amd64, arm64 | `anime-freebsd-{arch}` | `anime-cli-freebsd-{arch}` |
 
-On Linux, replace `{arch}` with `amd64` or `arm64`, then install the server binary:
+On Linux, replace `{arch}` with `amd64` or `arm64` to download both binaries. Install them into a directory on `PATH`:
 
 ```sh
-curl -LSsf https://github.com/apimgr/anime/releases/latest/download/anime-linux-amd64 -o /usr/local/bin/anime
-chmod +x /usr/local/bin/anime
+curl -q -LSsf https://github.com/apimgr/anime/releases/latest/download/anime-linux-amd64 -o anime
+curl -q -LSsf https://github.com/apimgr/anime/releases/latest/download/anime-cli-linux-amd64 -o anime-cli
+chmod +x anime anime-cli
+sudo install -m 0755 anime anime-cli /usr/local/bin/
 ```
 
-On macOS, choose `darwin-amd64` for Intel or `darwin-arm64` for Apple Silicon. After downloading either Unix binary, make it executable with `chmod +x`; remove macOS quarantine when needed with `xattr -d com.apple.quarantine /usr/local/bin/anime`.
+On macOS, choose `darwin-amd64` for Intel or `darwin-arm64` for Apple Silicon. Download the matching server and CLI artifacts, make them executable with `chmod +x`, then move them into a directory on `PATH`. If macOS blocks either downloaded file, remove quarantine with `xattr -d com.apple.quarantine ./anime` and `xattr -d com.apple.quarantine ./anime-cli`.
+
+On FreeBSD, choose `freebsd-amd64` or `freebsd-arm64`; the Linux download and install commands above apply with those artifact names.
+
+On Windows, choose `windows-amd64` or `windows-arm64`, download both `.exe` artifacts, and place them in a directory on `PATH`. PowerShell example for amd64:
+
+```powershell
+Invoke-WebRequest https://github.com/apimgr/anime/releases/latest/download/anime-windows-amd64.exe -OutFile anime.exe
+Invoke-WebRequest https://github.com/apimgr/anime/releases/latest/download/anime-cli-windows-amd64.exe -OutFile anime-cli.exe
+```
 
 ## Docker
 
@@ -87,8 +98,10 @@ See [Configuration](docs/configuration.md) for the server settings, defaults, fi
 
 | Method | Route | Description |
 |---|---|---|
+| GET | `/api/v1` and `/api` | API route index |
 | GET | `/api/v1/random` | Return one random quote |
 | GET | `/api/v1/quotes` | List or search quotes with optional `q`, `anime`, and `character` filters |
+| GET | `/api/v1/server/{about,help,privacy,terms}` | Informational page content |
 | GET | `/api/v1/server/healthz` | Bare JSON health object; HTTP 503 when unhealthy |
 | GET, POST | `/api/v1/server/preferences` | Read or update browser-local theme and language preferences |
 | GET | `/api/v1/server/preferences/sync` | Export browser preferences as a URL and share code |
@@ -100,6 +113,10 @@ See [Configuration](docs/configuration.md) for the server settings, defaults, fi
 | GET | `/api/v1/stats` | Runtime and collection statistics |
 | GET | `/api/v1/server/swagger` | OpenAPI 3.1 JSON |
 | GET, POST | `/api/v1/server/graphql` | Read-only GraphQL query endpoint |
+| GET | `/api/v1/{random,quotes,stats}.txt` | Plain text responses |
+| GET | `/api/v1/server/healthz.txt` and `/api/v1/stats.txt` | Plain text status and statistics |
+| GET | `/api/autodiscover` | CLI release metadata |
+| GET | `/cli/binaries/{file}` | Supported CLI release binary |
 
 Plain text forms are available by adding `.txt` to the random, quotes, health, and stats routes. `/api/healthz`, `/api/swagger`, and `/api/graphql` are direct aliases. The HTML browser and standard pages include `/`, `/quotes`, `/server/about`, `/server/help`, `/server/healthz`, `/server/preferences`, `/server/preferences/sync`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security`, `/server/security/policy`, `/server/security/thanks`, `/server/docs/swagger`, and `/server/docs/graphql`. The `/server/preferences/sync/import` action applies a shared preference set. `/server` redirects to `/server/about`.
 
@@ -150,7 +167,7 @@ The executable scripts in `tests/` cover binary and HTTP behavior separately fro
 ./tests/e2e.sh
 ```
 
-`run_tests.sh` prefers Incus when available and otherwise runs Docker integration checks. The browser suite is on-demand and is not part of the commit gate. See [Development](docs/development.md) for prerequisites and details.
+`tests/run_tests.sh` prefers Incus when available and otherwise runs Docker integration checks. The browser suite is on-demand and is not part of the commit gate. See [Development](docs/development.md) for prerequisites and details.
 
 ## License
 

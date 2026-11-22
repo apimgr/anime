@@ -6,4 +6,6 @@ HTTP requests are untrusted. The server applies request size, concurrency, and r
 
 The application serves `/security.txt` and `/.well-known/security.txt` with a current expiration and a canonical URL based on the request origin. Reports should be submitted through [GitHub private vulnerability reporting](https://github.com/apimgr/anime/security/advisories/new), not public issues. The server security pages are `/server/security`, `/server/security/policy`, and `/server/security/thanks`; their JSON counterparts are available under `/api/v1/server/security`. Do not expose config, data, or log directories from a public web server.
 
+The built-in disclosure policy covers the application and API, excludes denial-of-service testing and other harmful activity, and requests private reporting with a 90-day coordinated-disclosure window. The window ends early when a fix is released and may be extended by agreement. Good-faith research that follows the policy is authorized.
+
 The production Docker Compose file enables a Tor hidden service by default. The container writes the onion hostname under `/data/tor/hidden_service/hostname`; the public help page shows the address after Tor creates it. Set `ENABLE_TOR=false` to disable this service.
