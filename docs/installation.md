@@ -19,6 +19,19 @@ The companion `anime-cli-{os}-{arch}` binary calls an existing service; pass `--
 
 Prebuilt server and CLI artifacts are published for Linux, macOS, Windows, and FreeBSD on amd64 and arm64. The installer scripts are in `scripts/` for Linux, macOS, BSD, and Windows PowerShell. Review a script before running it, and use `scripts/uninstall.sh` to remove supported installations.
 
+| Operating system | Architecture | Server artifact | CLI artifact |
+|---|---|---|---|
+| Linux | amd64 | `anime-linux-amd64` | `anime-cli-linux-amd64` |
+| Linux | arm64 | `anime-linux-arm64` | `anime-cli-linux-arm64` |
+| macOS | amd64 | `anime-darwin-amd64` | `anime-cli-darwin-amd64` |
+| macOS | arm64 | `anime-darwin-arm64` | `anime-cli-darwin-arm64` |
+| Windows | amd64 | `anime-windows-amd64.exe` | `anime-cli-windows-amd64.exe` |
+| Windows | arm64 | `anime-windows-arm64.exe` | `anime-cli-windows-arm64.exe` |
+| FreeBSD | amd64 | `anime-freebsd-amd64` | `anime-cli-freebsd-amd64` |
+| FreeBSD | arm64 | `anime-freebsd-arm64` | `anime-cli-freebsd-arm64` |
+
+Use the release's published SHA-256 checksums to verify a downloaded artifact before installing it. The interactive self-update command performs checksum verification automatically. The Windows installer downloads the matching server binary; the CLI is a separate artifact.
+
 ### Updates
 
 Check for a release or install it with checksum verification:

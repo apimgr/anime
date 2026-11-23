@@ -3,6 +3,7 @@
 [![CI](https://github.com/apimgr/anime/actions/workflows/ci.yml/badge.svg)](https://github.com/apimgr/anime/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/apimgr/anime)](https://github.com/apimgr/anime/releases)
 [![License](https://img.shields.io/github/license/apimgr/anime)](LICENSE.md)
+[![Docs](https://readthedocs.org/projects/apimgr-anime/badge/?version=latest)](https://apimgr-anime.readthedocs.io/)
 
 ## About
 
