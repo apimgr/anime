@@ -297,11 +297,11 @@ func TestServerPagesRenderSharedLayoutAndAccurateContent(t *testing.T) {
 		if !strings.Contains(body, test.want) || !strings.Contains(body, s.cfg.Server.Branding.Title+" · MIT License") || !strings.Contains(body, "name=\"description\"") {
 			t.Errorf("%s did not render current content and shared layout", test.path)
 		}
-		if !strings.Contains(body, `<html lang="en" dir="ltr" data-theme="dark">`) ||
+		if !strings.Contains(body, `<html lang="en" dir="ltr" data-theme="dark"`) ||
 			!strings.Contains(body, `class="skip-link" href="#main-content"`) ||
 			!strings.Contains(body, `class="skip-link" href="#main-nav"`) ||
 			!strings.Contains(body, `class="nav-links"`) ||
-			!strings.Contains(body, `id="mobile-menu-state" type="checkbox"`) {
+			!strings.Contains(body, `id="nav-toggle" type="checkbox"`) {
 			t.Errorf("%s did not render accessible document metadata and navigation", test.path)
 		}
 	}

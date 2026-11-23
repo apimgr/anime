@@ -125,7 +125,7 @@ func (s *Server) setupRoutes() {
 
 	// Static files (CSS, JS, images)
 	s.router.PathPrefix("/locales/").HandlerFunc(s.handleLocaleJSON).Methods("GET")
-	s.router.PathPrefix("/static/").Handler(http.StripPrefix("/", s.serveStatic()))
+	s.router.PathPrefix("/static/").HandlerFunc(s.handleStatic).Methods("GET", "HEAD")
 
 	// Special files (PWA, robots, security)
 	s.router.HandleFunc("/robots.txt", s.handleRobotsTxt).Methods("GET")
@@ -137,8 +137,8 @@ func (s *Server) setupRoutes() {
 	s.router.HandleFunc("/.well-known/llms.txt", s.handleLLMSTxt).Methods("GET", "HEAD")
 	s.router.HandleFunc("/llms.txt", s.handleLLMSTxt).Methods("GET", "HEAD")
 	s.router.HandleFunc("/.well-known/pgp-key.asc", s.handlePGPKey).Methods("GET", "HEAD")
-	s.router.HandleFunc("/manifest.json", s.handleManifest).Methods("GET")
-	s.router.HandleFunc("/sw.js", s.handleServiceWorker).Methods("GET")
+	s.router.HandleFunc("/manifest.json", s.handleManifest).Methods("GET", "HEAD")
+	s.router.HandleFunc("/sw.js", s.handleServiceWorker).Methods("GET", "HEAD")
 
 	// Web UI routes
 	s.router.HandleFunc("/", s.handleHome).Methods("GET")
@@ -382,6 +382,9 @@ func (s *Server) validSecurityID(value string, now time.Time) bool {
 // handleManifest returns the PWA manifest
 func (s *Server) handleManifest(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/manifest+json")
+	if s.setVersionedDocumentHeaders(w, r) {
+		return
+	}
 
 	theme := s.cfg.WebUI.Theme
 	bgColor := "#1a1a1a"
@@ -399,31 +402,32 @@ func (s *Server) handleManifest(w http.ResponseWriter, r *http.Request) {
   "theme_color": "#0066cc",
   "icons": [
     {
-      "src": "/static/images/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/static/images/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "/static/images/icon.svg?v=%s",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ]
-}`, bgColor)
+}`, bgColor, assetStamp())
 
-	_, _ = w.Write([]byte(manifest))
+	if r.Method != http.MethodHead {
+		_, _ = w.Write([]byte(manifest))
+	}
 }
 
 // handleServiceWorker returns a basic service worker
 func (s *Server) handleServiceWorker(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/javascript")
+	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	if s.setVersionedDocumentHeaders(w, r) {
+		return
+	}
 
-	sw := `// Anime Quotes API Service Worker
-const CACHE_NAME = 'anime-quotes-v1';
+	sw := fmt.Sprintf(`// Anime Quotes API Service Worker
+const CACHE_NAME = 'anime-quotes-%s';
 const urlsToCache = [
   '/',
-  '/static/css/main.css',
-  '/static/js/main.js',
+  '/static/css/main.css?v=%s',
+  '/static/js/main.js?v=%s',
   '/manifest.json'
 ];
 
@@ -433,6 +437,16 @@ self.addEventListener('install', function(event) {
       .then(function(cache) {
         return cache.addAll(urlsToCache);
       })
+  );
+});
+
+self.addEventListener('activate', function(event) {
+  event.waitUntil(
+    caches.keys().then(function(names) {
+      return Promise.all(names.filter(function(name) {
+        return name.startsWith('anime-quotes-') && name !== CACHE_NAME;
+      }).map(function(name) { return caches.delete(name); }));
+    })
   );
 });
 
@@ -448,8 +462,21 @@ self.addEventListener('fetch', function(event) {
     )
   );
 });
-`
-	_, _ = w.Write([]byte(sw))
+`, assetStamp(), assetStamp(), assetStamp())
+	if r.Method != http.MethodHead {
+		_, _ = w.Write([]byte(sw))
+	}
+}
+
+func (s *Server) setVersionedDocumentHeaders(w http.ResponseWriter, r *http.Request) bool {
+	stamp := assetStamp()
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("ETag", `"`+stamp+`"`)
+	if r.Header.Get("If-None-Match") == `"`+stamp+`"` {
+		w.WriteHeader(http.StatusNotModified)
+		return true
+	}
+	return false
 }
 
 // handleHealthz returns a simple health check response

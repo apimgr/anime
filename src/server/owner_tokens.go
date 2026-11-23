@@ -23,7 +23,8 @@ import (
 	"time"
 )
 
-const ownerTokenCookieName = "anime_owner_token_4mxwkxfqGg"
+const ownerTokenCookieName = "anime_owner_token_qmzrjvka"
+const legacyOwnerTokenCookieName = "anime_owner_token_4mxwkxfqGg"
 
 type ownerTokenIdentity struct {
 	OwnerID string
@@ -108,7 +109,7 @@ func (s *Server) handleTokenWebAction(w http.ResponseWriter, r *http.Request) {
 	}
 	switch path {
 	case "/server/preferences/token/create":
-		if _, ok := s.ownerRequestIdentity(r); ok {
+		if _, ok := s.ownerRequestIdentity(w, r); ok {
 			s.renderStatusError(w, r, http.StatusConflict)
 			return
 		} else if token, ownerID, prefix, err := s.createOwnerPrimary(r.Context()); err == nil {
@@ -486,16 +487,27 @@ func (s *Server) renderIssuedPrimary(w http.ResponseWriter, r *http.Request, tok
 }
 
 func (s *Server) ownerCookieIdentity(w http.ResponseWriter, r *http.Request) (ownerTokenIdentity, bool) {
-	cookie, err := r.Cookie(ownerTokenCookieName)
-	if err != nil || cookie.Value == "" {
+	newCookie, newErr := r.Cookie(ownerTokenCookieName)
+	if newErr == nil {
+		identity, ok := s.resolveOwnerToken(r.Context(), newCookie.Value)
+		if !ok || identity.Kind != "primary" {
+			s.clearOwnerTokenCookie(w, r)
+			return ownerTokenIdentity{}, false
+		}
+		s.setOwnerTokenCookie(w, r, newCookie.Value)
+		return identity, true
+	}
+	legacyCookie, legacyErr := r.Cookie(legacyOwnerTokenCookieName)
+	if legacyErr != nil || legacyCookie.Value == "" {
 		return ownerTokenIdentity{}, false
 	}
-	identity, ok := s.resolveOwnerToken(r.Context(), cookie.Value)
+	identity, ok := s.resolveOwnerToken(r.Context(), legacyCookie.Value)
 	if !ok || identity.Kind != "primary" {
-		s.clearOwnerTokenCookie(w, r)
+		s.clearLegacyOwnerTokenCookie(w, r)
 		return ownerTokenIdentity{}, false
 	}
-	s.setOwnerTokenCookie(w, r, cookie.Value)
+	s.setOwnerTokenCookie(w, r, legacyCookie.Value)
+	s.clearLegacyOwnerTokenCookie(w, r)
 	return identity, true
 }
 
@@ -503,15 +515,11 @@ func (s *Server) ownerBearerIdentity(r *http.Request) (ownerTokenIdentity, bool)
 	return s.resolveOwnerToken(r.Context(), bearerValue(r.Header.Get("Authorization")))
 }
 
-func (s *Server) ownerRequestIdentity(r *http.Request) (ownerTokenIdentity, bool) {
+func (s *Server) ownerRequestIdentity(w http.ResponseWriter, r *http.Request) (ownerTokenIdentity, bool) {
 	if token := bearerValue(r.Header.Get("Authorization")); token != "" {
 		return s.resolveOwnerToken(r.Context(), token)
 	}
-	cookie, err := r.Cookie(ownerTokenCookieName)
-	if err != nil {
-		return ownerTokenIdentity{}, false
-	}
-	return s.resolveOwnerToken(r.Context(), cookie.Value)
+	return s.ownerCookieIdentity(w, r)
 }
 
 func (s *Server) resolveOwnerToken(ctx context.Context, token string) (ownerTokenIdentity, bool) {
@@ -676,6 +684,11 @@ func ownerTokenCookieMaxAge(value string) time.Duration {
 
 func (s *Server) clearOwnerTokenCookie(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{Name: ownerTokenCookieName, Value: "", Path: "/", MaxAge: -1, Expires: time.Unix(1, 0), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
+	s.clearLegacyOwnerTokenCookie(w, r)
+}
+
+func (s *Server) clearLegacyOwnerTokenCookie(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{Name: legacyOwnerTokenCookieName, Value: "", Path: "/", MaxAge: -1, Expires: time.Unix(1, 0), HttpOnly: true, Secure: true, SameSite: http.SameSiteStrictMode})
 }
 
 func (s *Server) listOwnerTokens(ctx context.Context, ownerID string) ([]ownerTokenListItem, error) {

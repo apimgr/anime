@@ -25,7 +25,7 @@
     </section>
     <p>{{t .Lang "info.about.rights_notice"}}</p>
 </article>
-{{if .OperatorAbout}}<section class="container container-md operator-page-content">{{.OperatorAbout}}</section>{{end}}
+{{if .OperatorAbout}}<section class="section-card" aria-labelledby="about-operator"><h2 id="about-operator">{{t .Lang "info.about.service"}}</h2>{{.OperatorAbout}}</section>{{end}}
 {{else if eq .Page "help"}}
 <article class="container container-md">
     <header class="page-header"><h1 class="page-title">{{t .Lang "info.help.title"}}</h1><p class="page-lead">{{t .Lang "info.help.intro"}}</p></header>
@@ -50,8 +50,8 @@
         </ul>
     </section>
     {{if .TorEnabled}}
-    <section>
-        <h2>{{t .Lang "info.help.tor_heading"}}</h2>
+    <section class="section-card" aria-labelledby="help-tor">
+        <h2 id="help-tor">{{t .Lang "info.help.tor_heading"}}</h2>
         <p><a href="http://{{.TorHostname}}">{{tf .Lang "info.help.tor_available" "address" .TorHostname}}</a></p>
     </section>
     {{end}}
@@ -72,11 +72,11 @@
     </section>
 </article>
 {{else if eq .Page "privacy"}}
-<article class="container container-md privacy-policy">
+<article class="container container-md">
     <header class="page-header"><h1 class="page-title">Privacy Policy</h1><p class="page-lead">How Anime Quotes handles requests, browser preferences, and reports.</p></header>
-    <p class="last-updated">Build: {{.BuildDate}}</p>
-    <section id="summary" class="section-card privacy-summary" aria-labelledby="privacy-summary-title">
+    <section id="summary" class="section-card" aria-labelledby="privacy-summary-title">
         <h2 id="privacy-summary-title">Summary</h2>
+        <p>Build: {{.BuildDate}}</p>
         <ul><li>Quote data is embedded in the application.</li><li>{{if .DataSold}}Visitor data may be shared with or sold to third parties as described below.{{else}}We do not sell visitor data.{{end}}</li><li>Search terms may appear in request logs.</li><li>Theme, language, and consent choices stay in first-party browser cookies.</li></ul>
     </section>
     <section id="cookies" class="section-card" aria-labelledby="privacy-cookies">
@@ -131,11 +131,11 @@
     </section>
 </article>
 {{else if eq .Page "terms"}}
-{{if .OperatorTerms}}
-<article class="container container-md operator-page-content">{{.OperatorTerms}}</article>
-{{else}}
 <article class="container container-md">
     <header class="page-header"><h1 class="page-title">Terms of Service</h1><p class="page-lead">Terms for using Anime Quotes API.</p></header>
+    {{if .OperatorTerms}}
+    <section class="section-card" aria-labelledby="terms-operator"><h2 id="terms-operator">Terms</h2>{{.OperatorTerms}}</section>
+    {{else}}
     <section class="section-card" aria-labelledby="terms-acceptance">
         <h2 id="terms-acceptance">Acceptance</h2>
         <p>Using Anime Quotes API means accepting these terms; stop using the service if you do not agree.</p>
@@ -156,8 +156,8 @@
         <h2 id="terms-governing-law">Governing law</h2>
         <p>The law of the place where the operator is established applies, unless the operator's own terms text names another.</p>
     </section>
+    {{end}}
 </article>
-{{end}}
 {{else if eq .Page "dpo"}}
 <article class="container container-md">
     <header class="page-header"><h1 class="page-title">Data Protection Officer</h1><p class="page-lead">Privacy contact information.</p></header>
@@ -196,44 +196,48 @@
     {{else}}
     {{if .ContactErrors}}<div role="alert"><p>Please correct the following fields:</p><ul>{{range $field, $message := .ContactErrors}}<li>{{$field}}: {{$message}}</li>{{end}}</ul></div>{{end}}
     {{if .ContactError}}<p role="alert">{{.ContactError}}</p>{{end}}
-    <form class="section-card" action="/server/contact" method="post">
+    <section class="section-card" aria-labelledby="contact-form-heading">
+    <h2 id="contact-form-heading">{{if .ContactChooser}}Choose a report type{{else}}{{.ContactTypeTitle}}{{end}}</h2>
+    <form action="/server/contact" method="post">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <input type="hidden" name="type" value="{{.ContactType}}">
         <input type="hidden" name="form_token" value="{{.FormToken}}">
         {{if .SecurityMode}}<input type="hidden" name="security_id" value="{{.SecurityID}}">{{end}}
         {{range .ContactFields}}
-        <div class="form-field">
+        <div class="form-group">
             {{if eq .Type "textarea"}}
             <label for="contact-{{.Name}}">{{.Label}}{{if .Required}} <span>(required)</span>{{else}} <span>(optional)</span>{{end}}</label>
-            <textarea id="contact-{{.Name}}" name="{{.Name}}" {{if .Required}}required{{end}} {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}}>{{index $.ContactValues .Name}}</textarea>
+            <textarea class="form-input" id="contact-{{.Name}}" name="{{.Name}}" {{if .Required}}required{{end}} {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}}>{{index $.ContactValues .Name}}</textarea>
             {{else if eq .Type "checkbox"}}
             <label><input type="checkbox" name="{{.Name}}" value="true" {{if .Required}}required{{end}} {{if eq (index $.ContactValues .Name) "true"}}checked{{end}}> {{.Label}}{{if .Required}} <span>(required)</span>{{else}} <span>(optional)</span>{{end}}</label>
             {{else if eq .Type "select"}}
             <label for="contact-{{.Name}}">{{.Label}}{{if .Required}} <span>(required)</span>{{else if .RequiredWhen}} <span>(required when {{.RequiredWhen.Field}} is {{.RequiredWhen.Equals}})</span>{{else}} <span>(optional)</span>{{end}}</label>
-            <select id="contact-{{.Name}}" name="{{.Name}}" {{if .Required}}required{{end}}>
+            <select class="form-input" id="contact-{{.Name}}" name="{{.Name}}" {{if .Required}}required{{end}}>
                 <option value="">Choose one</option>
                 {{range .Options}}<option value="{{.}}">{{.}}</option>{{end}}
             </select>
             {{else}}
             <label for="contact-{{.Name}}">{{.Label}}{{if .Required}} <span>(required)</span>{{else if .RequiredWhen}} <span>(required when {{.RequiredWhen.Field}} is {{.RequiredWhen.Equals}})</span>{{else}} <span>(optional)</span>{{end}}</label>
-            <input id="contact-{{.Name}}" name="{{.Name}}" type="{{.Type}}" value="{{index $.ContactValues .Name}}" {{if .Options}}list="contact-options-{{.Name}}"{{end}} {{if .Required}}required{{end}} {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}}>
+            <input class="form-input" id="contact-{{.Name}}" name="{{.Name}}" type="{{.Type}}" value="{{index $.ContactValues .Name}}" {{if .Options}}list="contact-options-{{.Name}}"{{end}} {{if .Required}}required{{end}} {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}}>
             {{if .Options}}<datalist id="contact-options-{{.Name}}">{{range .Options}}<option value="{{.}}">{{end}}</datalist>{{end}}
             {{end}}
         </div>
         {{end}}
         {{if eq .CaptchaProvider "simple"}}
-        <div class="form-field"><label for="contact-captcha">Answer: {{.CaptchaQuestion}}</label><input id="contact-captcha" name="captcha_answer" inputmode="numeric" required><input type="hidden" name="captcha_id" value="{{.CaptchaID}}"></div>
+        <div class="form-group"><label for="contact-captcha">Answer: {{.CaptchaQuestion}}</label><input class="form-input" id="contact-captcha" name="captcha_answer" inputmode="numeric" required><input type="hidden" name="captcha_id" value="{{.CaptchaID}}"></div>
         {{else if eq .CaptchaProvider "recaptcha"}}
         <div class="g-recaptcha" data-sitekey="{{.CaptchaSiteKey}}"></div>
         <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-        <noscript><div class="form-field"><label for="contact-captcha">Answer: {{.CaptchaQuestion}}</label><input id="contact-captcha" name="captcha_answer" inputmode="numeric" required><input type="hidden" name="captcha_id" value="{{.CaptchaID}}"></div></noscript>
+        <noscript><div class="form-group"><label for="contact-captcha">Answer: {{.CaptchaQuestion}}</label><input class="form-input" id="contact-captcha" name="captcha_answer" inputmode="numeric" required><input type="hidden" name="captcha_id" value="{{.CaptchaID}}"></div></noscript>
         {{else}}
         <div class="h-captcha" data-sitekey="{{.CaptchaSiteKey}}"></div>
         <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
-        <noscript><div class="form-field"><label for="contact-captcha">Answer: {{.CaptchaQuestion}}</label><input id="contact-captcha" name="captcha_answer" inputmode="numeric" required><input type="hidden" name="captcha_id" value="{{.CaptchaID}}"></div></noscript>
+        <noscript><div class="form-group"><label for="contact-captcha">Answer: {{.CaptchaQuestion}}</label><input class="form-input" id="contact-captcha" name="captcha_answer" inputmode="numeric" required><input type="hidden" name="captcha_id" value="{{.CaptchaID}}"></div></noscript>
         {{end}}
         <div class="contact-honeypot" aria-hidden="true"><label for="contact-website">Leave this field empty</label><input id="contact-website" name="website" tabindex="-1" autocomplete="off"></div>
-        <button type="submit">Send report</button>
+        <button class="btn btn-primary" type="submit">Send report</button>
     </form>
+    </section>
     <p>To report a security vulnerability, see <a href="/server/security">security information</a>.</p>
     {{end}}
 </article>
@@ -241,34 +245,36 @@
 
 {{define "contact-review-content"}}
 <article class="container container-md">
-    <div class="contact-review-backdrop">
-        <section class="contact-review" aria-labelledby="contact-review-title">
-            <h1 id="contact-review-title">Review your report</h1>
+    <header class="page-header"><h1 class="page-title">Review your report</h1><p class="page-lead">Check the report details before sending them.</p></header>
+        <section class="section-card" aria-labelledby="contact-review-title">
+            <h2 id="contact-review-title">Report details</h2>
             {{if .ReviewError}}<p role="alert">{{.ReviewError}}</p>{{end}}
             <dl><dt>Email address</dt><dd class="contact-review-email">{{index .ContactValues "email" 0}}</dd><dt>Type</dt><dd>{{.ContactType}}</dd><dt>Subject</dt><dd>{{index .ContactValues "subject" 0}}</dd></dl>
             <form method="post" action="/server/contact">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
                 {{range $name, $values := .ContactValues}}{{if and (ne $name "website") (ne $name "captcha_id") (ne $name "captcha_answer") (ne $name "captcha_response") (ne $name "g-recaptcha-response") (ne $name "h-captcha-response")}}{{range $values}}<input type="hidden" name="{{$name}}" value="{{.}}">{{end}}{{end}}{{end}}
                 <input type="hidden" name="step" value="confirm">
                 <input type="hidden" name="review_token" value="{{.ReviewToken}}">
                 <label><input type="checkbox" name="confirmed" value="true" required> This email address is correct, and this is a genuine report, not an advertisement, a solicitation or spam</label>
-                <button type="submit">Confirm and send</button>
+                <button class="btn btn-primary" type="submit">Confirm and send</button>
             </form>
             <form method="post" action="/server/contact">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
                 {{range $name, $values := .ContactValues}}{{if and (ne $name "website") (ne $name "captcha_id") (ne $name "captcha_answer") (ne $name "captcha_response") (ne $name "g-recaptcha-response") (ne $name "h-captcha-response")}}{{range $values}}<input type="hidden" name="{{$name}}" value="{{.}}">{{end}}{{end}}{{end}}
                 <input type="hidden" name="step" value="edit">
-                <button type="submit">Edit report</button>
+                <button class="btn btn-secondary" type="submit">Edit report</button>
             </form>
         </section>
-    </div>
 </article>
 {{end}}
 
 {{define "contact-success-content"}}
-<article class="container container-sm"><header class="page-header"><h1 class="page-title">Report received</h1></header><p>{{.SuccessMessage}}</p></article>
+<article class="container container-sm"><header class="page-header"><h1 class="page-title">Report received</h1></header><section class="section-card" aria-labelledby="contact-success"><h2 id="contact-success">Status</h2><p>{{.SuccessMessage}}</p></section></article>
 {{end}}
 
 {{define "security-report-content"}}
 <article class="container container-sm">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/server/security">{{t .Lang "footer.security"}}</a></nav>
     <header class="page-header"><h1 class="page-title">Security report status</h1><p class="page-lead">Private status for report {{.Report.TrackingID}}</p></header>
     <section class="section-card" aria-labelledby="report-status">
         <h2 id="report-status">Current status</h2>
@@ -304,10 +310,10 @@
     </section>
     {{else if eq .Page "security-policy"}}
     <header class="page-header"><h1 class="page-title">Disclosure policy</h1><p class="page-lead">A coordinated process for reporting and resolving security issues in this project.</p></header>
-    {{range .DisclosurePolicy}}
-    <section class="section-card">
-        <h2>{{.Title}}</h2>
-        <p>{{.Content}}{{if .Link}} <a href="{{.Link}}">{{.Link}}</a>{{end}}</p>
+    {{range $index, $section := .DisclosurePolicy}}
+    <section class="section-card" aria-labelledby="policy-{{$index}}">
+        <h2 id="policy-{{$index}}">{{$section.Title}}</h2>
+        <p>{{$section.Content}}{{if $section.Link}} <a href="{{$section.Link}}">{{$section.Link}}</a>{{end}}</p>
     </section>
     {{end}}
     {{else}}
@@ -333,10 +339,9 @@
 {{end}}
 
 {{define "health-content"}}
-<article class="info-page">
-    <h1>Service health</h1>
-    <p>Status: {{.HealthStatus}}</p>
-    <section><h2>Service</h2><dl>
+<article class="container container-md">
+    <header class="page-header"><h1 class="page-title">{{t .Lang "home.health_check"}}</h1><p class="page-lead">{{t .Lang "home.health_check_description"}}</p></header>
+    <section class="section-card" aria-labelledby="health-service"><h2 id="health-service">Service</h2><dl>
         <dt>Status</dt><dd>{{.HealthStatus}}</dd>
         <dt>Version</dt><dd>{{.Version}}</dd>
         <dt>Go version</dt><dd>{{.GoVersion}}</dd>
@@ -346,75 +351,90 @@
         <dt>Mode</dt><dd>{{.Mode}}</dd>
         <dt>Timestamp</dt><dd>{{.Timestamp}}</dd>
     </dl></section>
-    <section><h2>Features</h2><dl>
+    <section class="section-card" aria-labelledby="health-features"><h2 id="health-features">Features</h2><dl>
         <dt>Tor</dt><dd>{{.TorStatus}}{{if .TorRunning}} — <a href="http://{{.TorHostname}}">{{.TorHostname}}</a>{{end}}</dd>
         <dt>I2P</dt><dd>{{.I2PStatus}}</dd>
         <dt>GeoIP</dt><dd>{{if .GeoIPEnabled}}enabled{{else}}disabled{{end}}</dd>
     </dl></section>
-    <section><h2>Checks</h2><dl>
+    <section class="section-card" aria-labelledby="health-checks"><h2 id="health-checks">Checks</h2><dl>
         <dt>Database</dt><dd>{{.DatabaseStatus}}</dd>
         <dt>Cache</dt><dd>{{.CacheStatus}}</dd>
         <dt>Disk</dt><dd>{{.DiskStatus}}</dd>
         <dt>Scheduler</dt><dd>{{.SchedulerStatus}}</dd>
     </dl></section>
-    <section><h2>Statistics</h2><dl>
+    <section class="section-card" aria-labelledby="health-statistics"><h2 id="health-statistics">Statistics</h2><dl>
         <dt>Total requests</dt><dd>{{.RequestsTotal}}</dd>
         <dt>Requests in last 24 hours</dt><dd>{{.Requests24h}}</dd>
         <dt>Active connections</dt><dd>{{.ActiveConnections}}</dd>
         <dt>Quotes loaded</dt><dd>{{.TotalQuotes}}</dd>
         <dt>Service started</dt><dd>{{.StartedAt}}</dd>
     </dl></section>
-    <p><a href="/api/v1/server/healthz">JSON health API</a></p>
+    <section class="section-card" aria-labelledby="health-api"><h2 id="health-api">{{t .Lang "info.help.docs_heading"}}</h2><p><a href="/api/v1/server/healthz">{{t .Lang "info.help.openapi_json"}}</a></p></section>
 </article>
 {{end}}
 
 {{define "quotes-content"}}
-<article class="info-page">
-    <h1>{{t .Lang "quotes_page.title"}}</h1>
+<div class="container container-lg">
+    <header class="page-header"><h1 class="page-title">{{t .Lang "quotes_page.title"}}</h1></header>
+    <section class="section-card" aria-labelledby="quotes-search-heading">
+        <h2 id="quotes-search-heading">{{t .Lang "quotes_page.search"}}</h2>
     <form method="get" action="/quotes">
         <label for="quote-query">{{t .Lang "quotes_page.quote_text"}} <input id="quote-query" name="q" maxlength="256" value="{{.Query}}"></label>
         <label for="quote-anime">{{t .Lang "quotes_page.anime"}} <input id="quote-anime" name="anime" maxlength="256" value="{{.Anime}}"></label>
         <label for="quote-character">{{t .Lang "quotes_page.character"}} <input id="quote-character" name="character" maxlength="256" value="{{.Character}}"></label>
         <button type="submit">{{t .Lang "quotes_page.search"}}</button>
     </form>
+    </section>
     <p>{{tf .Lang "quotes_page.matching" "count" (len .Quotes)}}</p>
     {{range .Quotes}}
-    <article class="card" id="quote-{{.ID}}">
+    <article class="section-card" id="quote-{{.ID}}">
+        <h2>{{.Anime}} — {{.Character}}</h2>
         <blockquote>{{.Quote}}</blockquote>
-        <p>{{.Character}} · {{.Anime}}</p>
     </article>
     {{else}}
     <p>{{t .Lang "quotes_page.no_matches"}}</p>
     {{end}}
-</article>
+</div>
 {{end}}
 
 {{define "swagger-content"}}
-<article class="info-page">
-    <h1>REST API documentation</h1>
+<article class="container container-md">
+    <header class="page-header"><h1 class="page-title">{{t .Lang "info.help.rest_reference"}}</h1><p class="page-lead">{{t .Lang "info.help.api_random"}}</p></header>
+    <section class="section-card" aria-labelledby="swagger-openapi">
+    <h2 id="swagger-openapi">OpenAPI</h2>
     <p>Machine-readable <a href="/api/v1/server/swagger">OpenAPI 3.1 specification</a>.</p>
-    <h2>Get a random quote</h2>
+    </section>
+    <section class="section-card" aria-labelledby="swagger-random"><h2 id="swagger-random">Get a random quote</h2>
     <pre><code>GET /api/v1/random</code></pre>
-    <h2>Search quotes</h2>
+    </section>
+    <section class="section-card" aria-labelledby="swagger-search"><h2 id="swagger-search">Search quotes</h2>
     <p>Optional case-insensitive <code>q</code>, <code>anime</code>, and <code>character</code> filters; values are limited to 256 characters.</p>
     <pre><code>GET /api/v1/quotes?q=believe&amp;anime=naruto&amp;character=naruto</code></pre>
-    <h2>Health and statistics</h2>
+    </section>
+    <section class="section-card" aria-labelledby="swagger-health"><h2 id="swagger-health">Health and statistics</h2>
     <ul><li><code>GET /api/v1/server/healthz</code></li><li><code>GET /api/v1/stats</code></li></ul>
-    <h2>GraphQL</h2>
+    </section>
+    <section class="section-card" aria-labelledby="swagger-graphql"><h2 id="swagger-graphql">GraphQL</h2>
     <p><a href="/server/docs/graphql">Open the GraphQL explorer</a>. The GraphQL API is read-only.</p>
+    </section>
 </article>
 {{end}}
 
 {{define "graphql-content"}}
-<article class="info-page">
-    <h1>GraphQL explorer</h1>
+<article class="container container-md">
+    <header class="page-header"><h1 class="page-title">{{t .Lang "info.help.graphql_explorer"}}</h1><p class="page-lead">{{tf .Lang "info.help.api_response" "anime" "anime" "character" "character" "quote" "quote"}}</p></header>
+    <section class="section-card" aria-labelledby="graphql-query">
+        <h2 id="graphql-query">Query</h2>
     <form id="query-form" data-query-form method="get" action="/api/graphql">
         <label for="query">GraphQL query</label>
         <textarea id="query" name="query" rows="8" cols="80">{ randomQuote { anime character quote } }</textarea>
         <button type="submit">Run query</button>
     </form>
+        </section>
+        <section class="section-card" aria-labelledby="graphql-result"><h2 id="graphql-result">Result</h2>
     <pre id="result" aria-live="polite"></pre>
     <p>POST JSON to <code>/api/v1/server/graphql</code> or <code>/api/graphql</code>.</p>
+        </section>
 </article>
 {{end}}
 

@@ -2,7 +2,7 @@
 
 ## Public access and credentials
 
-Quote reads and public information routes are anonymous. The MCP endpoint and token-management operations require an owner Bearer token. The token page uses a secure owner cookie only for its CSRF-protected browser actions; API routes ignore cookies. Primary tokens manage an anonymous owner identity, while linked tokens are intended for separate clients. Token lists expose masked values only. Store the primary token securely and rotate it if it is lost or exposed.
+Quote reads and public information routes are anonymous. The MCP endpoint and token-management operations require an owner Bearer token. The token page uses a secure owner cookie only for its CSRF-protected browser actions; API routes ignore cookies. Primary tokens manage an anonymous owner identity, while linked tokens are intended for separate clients. Token lists expose masked values only. Store the primary token securely and rotate it if it is lost or exposed. The browser cookie name follows the project value in `IDEA.md`; an older cookie is accepted only when the current cookie is absent, then replaced and expired in the same response.
 
 There are no visitor accounts or passwords. The server operator token is separate from owner tokens and is stored in `secrets.yml`. Never publish configuration, database, backup, or log directories.
 

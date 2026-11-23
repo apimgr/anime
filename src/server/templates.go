@@ -2,12 +2,15 @@ package server
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"embed"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"mime"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -29,6 +32,13 @@ var templates *template.Template
 func initTemplates() error {
 	var err error
 	funcs := template.FuncMap{
+		"asset": func(path string) string {
+			separator := "?"
+			if strings.Contains(path, "?") {
+				separator = "&"
+			}
+			return path + separator + "v=" + assetStamp()
+		},
 		"t": func(language, key string) string {
 			return i18n.Translate(language, key)
 		},
@@ -80,6 +90,12 @@ func (s *Server) renderPage(w http.ResponseWriter, r *http.Request, data map[str
 
 func (s *Server) renderPageWithStatus(w http.ResponseWriter, r *http.Request, data map[string]interface{}, status int) error {
 	w.Header().Set("Cache-Control", "no-store")
+	stamp := assetStamp()
+	if current, err := r.Cookie("anime_build"); err == nil && current.Value != stamp && status >= 200 && status < 300 && r.Method != http.MethodHead && versionPurgeEligible(r) {
+		w.Header().Set("Clear-Site-Data", `"cache", "storage"`)
+	}
+	http.SetCookie(w, &http.Cookie{Name: "anime_build", Value: stamp, Path: "/", MaxAge: 31536000, Secure: true, SameSite: http.SameSiteLaxMode})
+	w.Header().Set("ETag", `"`+stamp+`"`)
 	if language, ok := canonicalLanguage(r.URL.Query().Get("lang")); ok {
 		http.SetCookie(w, preferenceCookie(r, "lang", language))
 	}
@@ -92,6 +108,11 @@ func (s *Server) renderPageWithStatus(w http.ResponseWriter, r *http.Request, da
 	w.WriteHeader(status)
 	_, err = w.Write(body)
 	return err
+}
+
+func versionPurgeEligible(r *http.Request) bool {
+	dest, mode := r.Header.Get("Sec-Fetch-Dest"), r.Header.Get("Sec-Fetch-Mode")
+	return (dest == "" && mode == "") || (dest == "document" && mode == "navigate")
 }
 
 func (s *Server) renderPageBody(r *http.Request, data map[string]interface{}) ([]byte, error) {
@@ -301,6 +322,47 @@ func (s *Server) handleLocaleJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 // serveStatic sets up the static file server for CSS, JS, and images
-func (s *Server) serveStatic() http.Handler {
-	return http.FileServer(http.FS(staticFS))
+func assetStamp() string {
+	version := strings.TrimSpace(Version)
+	commit := strings.TrimSpace(CommitID)
+	if version == "" {
+		version = "dev"
+	}
+	if commit == "" {
+		commit = "unknown"
+	}
+	return version + "-" + commit
+}
+
+func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
+	name := "static/" + strings.TrimPrefix(r.URL.Path, "/static/")
+	content, err := staticFS.ReadFile(name)
+	if err != nil {
+		writeProblem(w, http.StatusNotFound, "asset not found")
+		return
+	}
+	digest := sha256.Sum256(content)
+	etag := fmt.Sprintf(`"%x"`, digest[:])
+	w.Header().Set("ETag", etag)
+	contentType := mime.TypeByExtension(path.Ext(name))
+	if contentType == "" && strings.EqualFold(path.Ext(name), ".svg") {
+		contentType = "image/svg+xml"
+	}
+	if contentType == "" {
+		contentType = http.DetectContentType(content)
+	}
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if r.URL.Query().Get("v") == assetStamp() {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	} else {
+		w.Header().Set("Cache-Control", "no-cache")
+	}
+	if r.Header.Get("If-None-Match") == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	if r.Method != http.MethodHead {
+		_, _ = w.Write(content)
+	}
 }

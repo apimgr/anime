@@ -56,13 +56,19 @@
   },
   "a11y": {
     "skip_to_content": "انتقل إلى المحتوى الرئيسي",
-    "skip_to_navigation": "انتقل إلى قائمة التنقل"
+    "skip_to_navigation": "انتقل إلى قائمة التنقل",
+    "recovery_title": "تعذر تحميل هذه الصفحة",
+    "recovery_description": "أعد تحميل الصفحة. إذا استمرت المشكلة، فامسح البيانات المخزنة مؤقتًا لهذا الموقع.",
+    "recovery_reload": "أعد تحميل الصفحة",
+    "close_notification": "إغلاق الإشعار",
+    "close_dialog": "إغلاق مربع الحوار"
   },
   "nav": {
     "main_navigation": "قائمة التنقل الرئيسية",
     "home": "الرئيسية",
     "all_quotes": "كل الاقتباسات",
     "toggle_navigation": "إظهار قائمة التنقل أو إخفاؤها",
+    "close_navigation": "إغلاق قائمة التنقل",
     "preferences": "التفضيلات"
   },
   "theme": {

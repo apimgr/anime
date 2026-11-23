@@ -47,6 +47,35 @@ Default directories are selected by the application. Override them with `--confi
 | `web.llms.enabled`, `.include_endpoints`, `.include_schemas`, `.custom_sections` | `yaml.d/web.yml` | LLM discovery output |
 | `server.update.branch`, `.auto_install`, `.defer_days`, `.cli_min_version` | `yaml.d/maintenance.yml` | Release channel and update behavior |
 
+## Complete server settings index
+
+The following list covers the server configuration fields. A field's YAML area is shown in the preceding file table; legacy values are accepted during migration from `server.yml` and then written to their assigned area. Secret values are loaded from `secrets.yml` last.
+
+| YAML key or key group | Fields and behavior |
+|---|---|
+| `server` | `port`, `address`, `fqdn`, `baseurl`, and `mode` set the listener and public identity. `update.branch`, `update.auto_install`, `update.defer_days`, and `update.cli_min_version` control updates. `schedule.enabled` and `schedule.notifications` control in-process scheduled work. `metrics.enabled`, `metrics.endpoint`, `metrics.include_system`, and `metrics.include_app` control the metrics endpoint and exported measurements. `logging.access_format` and `logging.level` set access-log format and verbosity. |
+| `server.database` | `driver`, `url`, and `pool.max_open`, `pool.max_idle`, `pool.max_lifetime`, `pool.max_idle_time` select SQLite/libSQL and connection-pool limits. |
+| `server.i18n` | `default_language` and `available_languages` define the server locale fallback and enabled language set. The bundled catalogs currently support `en`, `es`, `fr`, `de`, `it`, and `ar`. |
+| `server.rate_limit` | `read.requests`, `read.window`, `strict.requests`, and `strict.window` define the normal and sensitive-operation request limits. Windows are seconds. |
+| `server.tokens` | `max_linked`, `cookie_max_age`, and `idle_purge_days` cap linked tokens, set the owner-cookie lifetime, and configure idle-owner cleanup. |
+| `server.security` | `encryption_key` and `encryption_key_version` protect encrypted report data and key rotation. `reports.retention_days` controls closed security-report retention. Put the encryption key in `secrets.yml`. |
+| `server.pages.contact` | `enabled`, `captcha`, `captcha_site_key`, `captcha_secret_key`, and `success_message` control the public report form and CAPTCHA. `antispam.honeypot`, `min_fill_seconds`, `max_age_seconds`, `per_ip`, `per_email`, `global`, `window`, `max_links`, `reject_markup`, `blocked_words`, `blocked_email_domains`, `strikes`, `ban_hours`, `review_min_seconds`, `review_max_seconds`, and `duplicate_window_hours` control validation and abuse limits. Put the CAPTCHA secret in `secrets.yml`. |
+| `server.contact` | `dpo.name`, `dpo.email`, and the `general`, `abuse`, `admin`, and `security` destination `email` values configure report routing. Each destination supports `webhooks.telegram`, `webhooks.discord`, `webhooks.slack`, and `webhooks.generic` URL fields. |
+| `server.notifications.email` | `smtp.host`, `smtp.port`, `smtp.username`, `smtp.password`, `smtp.tls`, `from.name`, and `from.email` configure mail delivery. Passwords belong in `secrets.yml`; supported `SMTP_*` environment variables override the corresponding SMTP values. |
+| `server.privacy.data` | `sold`, `stored_on_server`, and `sharing[]` (`condition`, `when`, `data`) describe data use and sharing. |
+| `server.privacy.retention` | `period`, `export_available`, and `deletion_available` describe operational retention and visitor rights. |
+| `server.privacy.consent` | `show_until_acknowledged`, `message`, `message_if_sold`, `policy.text`, `policy.url`, `buttons.decline`, `buttons.accept`, `position`, `show_preferences`, and `preferences_text` configure the consent banner and preferences controls. |
+| `server.privacy.cookies` | `essential.enabled/description`, `preferences.enabled/description`, and `analytics.enabled/description/description_suffix_not_sold/description_suffix_sold` describe cookie categories. Essential cookies remain enabled. |
+| `server.privacy.third_party.services[]` | `name`, `purpose`, `data_sent`, and `policy_url` document configured external services. |
+| `server.branding` | `title`, `tagline`, `description`, `logo`, `favicon`, and `content` configure the site identity and optional localized page content. `content` supports `header`, `footer`, `about`, `privacy`, and `terms`, with `format` and `body`. |
+| `server.seo` | `keywords`, `author`, `og_image`, `twitter_handle`, `title_separator`, `canonical`, `noindex`, and `meta_tags` configure page metadata. `opengraph.enabled/type/site_name` and `twitter.enabled/card/creator` control social cards. `verification` supports Google, Bing, Yandex, Baidu, Pinterest, Facebook, and `custom[]` name/property/content entries. `sitemap.max_urls/include_images` and `feed.max_items/title` control discovery output. |
+| `web-ui` | `theme`, `logo`, `favicon`, and `notifications.enabled/announcements` configure browser appearance and operator announcements. |
+| `web-robots` | `allow[]` and `deny[]` set crawler rules and sitemap inclusion. |
+| `web-security` | `admin`, `cors`, `report_url`, `contact`, `policy`, `keyservers[]`, and `publish_pgp_key` configure security headers, CORS, reporting links, and optional public-key publication. |
+| `web-llms` | `enabled`, `include_endpoints`, `include_schemas`, and `custom_sections[]` control `/llms.txt` output. |
+
+Configuration values are validated at load time; invalid values use their documented defaults and are logged. Not every field is safe to expose to the environment: use the file merge order and secret handling above for credentials.
+
 ## Branding and page content
 
 `yaml.d/branding.yml` holds `server.branding`, `server.seo`, and `web.ui`. Branding fields include the site title, tagline, description, logo, and favicon. SEO settings control canonical URLs, metadata, social cards, verification tags, sitemap limits, and feed titles and item counts.

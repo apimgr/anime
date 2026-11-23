@@ -1,5 +1,6 @@
 {{define "mcp-content"}}
 <article class="container container-md">
+    <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/server/help">{{t .Lang "footer.help"}}</a></nav>
     <header class="page-header"><h1 class="page-title">{{.Title}}</h1><p class="page-lead">{{.Description}}</p></header>
     {{range .MCPSections}}
     <section class="section-card" id="{{.ID}}" aria-labelledby="{{.ID}}-title">
@@ -7,13 +8,13 @@
         {{if .Code}}<pre id="{{.ID}}-code" class="code-block"><code class="selectable-value">{{.Code}}</code></pre><button type="button" data-action="copy-text" data-copy-target="{{.ID}}-code">{{t $.Lang "mcp_page.connect_code_copy"}}</button>{{else}}<p>{{.Content}}</p>{{end}}
         {{if eq .ID "endpoint"}}<pre id="mcp-url" class="code-block"><code class="selectable-value">{{$.MCPURL}}</code></pre><button type="button" data-action="copy-text" data-copy-target="mcp-url">{{t $.Lang "mcp_page.copy_endpoint"}}</button>{{end}}
         {{if eq .ID "tools"}}
-        <div class="table-wrapper"><table><thead><tr><th scope="col">{{t $.Lang "mcp_page.table_tool"}}</th><th scope="col">{{t $.Lang "mcp_page.table_description"}}</th></tr></thead><tbody>
+        <div class="table-wrapper"><table class="data-table"><thead><tr><th scope="col">{{t $.Lang "mcp_page.table_tool"}}</th><th scope="col">{{t $.Lang "mcp_page.table_description"}}</th></tr></thead><tbody>
             {{range $.MCPTools}}<tr><td><code>{{.Name}}</code></td><td>{{.Description}}</td></tr>{{end}}
         </tbody></table></div>
         <p>{{t $.Lang "mcp_page.tool_note"}}</p>
         {{end}}
         {{if eq .ID "troubleshooting"}}
-        <div class="table-wrapper"><table><thead><tr><th scope="col">{{t $.Lang "mcp_page.table_status"}}</th><th scope="col">{{t $.Lang "mcp_page.table_meaning"}}</th><th scope="col">{{t $.Lang "mcp_page.table_resolution"}}</th></tr></thead><tbody>
+        <div class="table-wrapper"><table class="data-table"><thead><tr><th scope="col">{{t $.Lang "mcp_page.table_status"}}</th><th scope="col">{{t $.Lang "mcp_page.table_meaning"}}</th><th scope="col">{{t $.Lang "mcp_page.table_resolution"}}</th></tr></thead><tbody>
             {{range $.MCPStatuses}}<tr><td><code>{{.Code}}</code></td><td>{{.Meaning}}</td><td>{{.Fix}}</td></tr>{{end}}
         </tbody></table></div>
         {{end}}

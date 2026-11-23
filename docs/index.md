@@ -6,9 +6,9 @@ Anime Quotes serves a curated, embedded collection through a server-rendered web
 
 - [Repository](https://github.com/apimgr/anime)
 - [ReadTheDocs documentation](https://apimgr-anime.readthedocs.io/)
-- [OpenAPI reference](/server/docs/swagger)
-- [GraphQL explorer](/server/docs/graphql)
 - [License](https://github.com/apimgr/anime/blob/main/LICENSE.md)
+
+On a running installation, the browser explorers are available at `/server/docs/swagger` and `/server/docs/graphql`.
 
 - [Installation](installation.md)
 - [Configuration](configuration.md)

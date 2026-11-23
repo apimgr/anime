@@ -81,3 +81,48 @@ func TestOwnerTokenCookieMaxAgeUsesConfiguredDuration(t *testing.T) {
 		}
 	}
 }
+
+func TestLegacyOwnerCookieMigratesOnlyWhenCurrentCookieIsAbsent(t *testing.T) {
+	s := newTestServer(t)
+	token, _, _, err := s.createOwnerPrimary(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/server/preferences/tokens", nil)
+	request.AddCookie(&http.Cookie{Name: legacyOwnerTokenCookieName, Value: token})
+	response := httptest.NewRecorder()
+	identity, ok := s.ownerCookieIdentity(response, request)
+	if !ok || identity.Kind != "primary" {
+		t.Fatal("valid legacy owner cookie was not accepted")
+	}
+	cookies := response.Result().Cookies()
+	if len(cookies) != 2 || cookies[0].Name != ownerTokenCookieName || cookies[1].Name != legacyOwnerTokenCookieName || cookies[1].MaxAge >= 0 {
+		t.Fatalf("legacy migration did not issue replacement and expire old cookie: %#v", cookies)
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/server/preferences/tokens", nil)
+	request.AddCookie(&http.Cookie{Name: ownerTokenCookieName, Value: "invalid"})
+	request.AddCookie(&http.Cookie{Name: legacyOwnerTokenCookieName, Value: token})
+	response = httptest.NewRecorder()
+	if _, ok := s.ownerCookieIdentity(response, request); ok {
+		t.Fatal("invalid current cookie fell back to the legacy cookie")
+	}
+	if got := response.Result().Cookies(); len(got) < 2 || got[0].Name != ownerTokenCookieName || got[0].MaxAge >= 0 {
+		t.Fatalf("invalid current cookie was not cleared: %#v", got)
+	}
+}
+
+func TestOwnerTokenAPIRejectsCookieAuthentication(t *testing.T) {
+	s := newTestServer(t)
+	token, _, _, err := s.createOwnerPrimary(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/server/preferences/tokens", nil)
+	request.AddCookie(&http.Cookie{Name: ownerTokenCookieName, Value: token})
+	response := httptest.NewRecorder()
+	s.router.ServeHTTP(response, request)
+	if response.Code != http.StatusUnauthorized {
+		t.Fatalf("API accepted owner cookie without bearer token: status=%d body=%s", response.Code, response.Body.String())
+	}
+}

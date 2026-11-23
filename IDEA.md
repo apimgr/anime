@@ -13,7 +13,7 @@ repo: https://github.com/apimgr/anime
 license: MIT
 binary: anime
 client_binary: anime-cli
-owner_token: anime_owner_token_4mxwkxfqGg
+owner_token: anime_owner_token_qmzrjvka
 
 ## Business logic
 

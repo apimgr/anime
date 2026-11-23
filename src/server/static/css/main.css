@@ -62,15 +62,14 @@
   --radius-full: 9999px;
 
   /* Z-index layers */
-  --z-dropdown: 1000;
-  --z-sticky: 1020;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
   --z-banner: 250;
-  --z-fixed: 1030;
-  --z-modal-backdrop: 1040;
-  --z-modal: 1050;
-  --z-popover: 1060;
-  --z-tooltip: 1070;
-  --z-toast: 10000;
+  --z-overlay: 300;
+  --z-drawer: 350;
+  --z-modal: 400;
+  --z-toast: 500;
 }
 
 /* Light Theme Override */
@@ -134,7 +133,7 @@ body {
   position: absolute;
   top: var(--space-md);
   left: var(--space-md);
-  z-index: var(--z-tooltip);
+  z-index: var(--z-toast);
   padding: var(--space-sm) var(--space-md);
   color: var(--text-primary);
   background: var(--bg-secondary);
@@ -379,9 +378,6 @@ pre code {
 #main-header {
   background: var(--bg-secondary);
   border-bottom: 2px solid var(--border-color);
-  position: sticky;
-  top: 0;
-  z-index: var(--z-sticky);
   box-shadow: var(--shadow-sm);
 }
 
@@ -415,20 +411,6 @@ pre code {
   font-size: 1.5rem;
   cursor: pointer;
   padding: var(--space-sm);
-}
-
-.mobile-menu-state {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.mobile-menu-state:focus-visible ~ .mobile-menu-toggle {
-  outline: 3px solid var(--accent-primary);
-  outline-offset: 3px;
 }
 
 .nav-links {
@@ -852,6 +834,11 @@ pre code {
   display: flex;
   align-items: center;
   gap: var(--space-md);
+  transition: opacity var(--transition-fast);
+}
+
+.toast-dismissed {
+  opacity: 0;
 }
 
 .toast.success {
@@ -1045,7 +1032,7 @@ pre code {
   color: var(--text-primary);
   margin-bottom: var(--space-lg);
   position: relative;
-  z-index: 1;
+  z-index: var(--z-raised);
   font-style: italic;
   line-height: 1.6;
 }
@@ -1341,28 +1328,6 @@ tr:hover {
     display: block;
   }
 
-  .nav-links {
-    position: absolute;
-    top: 70px;
-    left: 0;
-    right: 0;
-    background: var(--bg-secondary);
-    flex-direction: column;
-    display: none;
-    border-bottom: 2px solid var(--border-color);
-    padding: var(--space-md);
-    box-shadow: var(--shadow-md);
-  }
-
-  .mobile-menu-state:checked ~ .nav-links {
-    display: flex;
-  }
-
-  .nav-links a {
-    width: 100%;
-    text-align: center;
-  }
-
   /* Hero */
   .hero h1 {
     font-size: 2rem;
@@ -1482,28 +1447,162 @@ tr:hover {
     overflow: hidden;
 }
 
-.contact-review-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    display: grid;
-    place-items: center;
-    padding: 1rem;
-    background: rgb(0 0 0 / 70%);
-}
-
-.contact-review {
-    width: min(100%, 42rem);
-    max-height: 90vh;
-    overflow: auto;
-    padding: 1.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-}
-
 .contact-review-email {
     font-size: 1.25rem;
     font-weight: 700;
+}
+
+.header-container {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  justify-content: initial;
+}
+
+.nav-links {
+  justify-content: center;
+}
+
+.mobile-menu-toggle {
+  display: none;
+}
+
+.nav-checkbox {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.nav-panel,
+.nav-overlay {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .header-container {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: var(--space-sm);
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .mobile-menu-toggle {
+    display: block;
+    min-width: 44px;
+    min-height: 44px;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  .nav-checkbox:focus-visible ~ #main-header .mobile-menu-toggle {
+    outline: 3px solid var(--accent-primary);
+    outline-offset: 3px;
+  }
+
+  .nav-panel {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-end: 0;
+    z-index: var(--z-drawer, 350);
+    display: block;
+    width: min(280px, 85vw);
+    height: 100dvh;
+    overflow-y: auto;
+    padding: var(--space-lg) var(--space-md) calc(var(--space-lg) + env(safe-area-inset-bottom));
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-lg);
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform var(--transition-normal), visibility 0s linear var(--transition-normal);
+  }
+
+  [dir="rtl"] .nav-panel {
+    transform: translateX(-100%);
+  }
+
+  .nav-panel a,
+  .nav-close {
+    display: block;
+    min-height: 44px;
+    padding: var(--space-sm);
+    color: var(--text-primary);
+  }
+
+  .nav-close {
+    cursor: pointer;
+    text-align: end;
+  }
+
+  .nav-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-overlay, 300);
+    display: block;
+    visibility: hidden;
+    background: rgb(0 0 0 / 50%);
+    opacity: 0;
+    transition: opacity var(--transition-normal), visibility 0s linear var(--transition-normal);
+  }
+
+  .nav-checkbox:checked ~ .nav-panel {
+    transform: none;
+    visibility: visible;
+    transition: transform var(--transition-normal);
+  }
+
+  .nav-checkbox:checked ~ .nav-overlay {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity var(--transition-normal);
+  }
+
+  body:has(.nav-checkbox:checked) {
+    overflow: hidden;
+  }
+}
+
+@media (min-width: 768px) {
+  .nav-collapsed .mobile-menu-toggle {
+    display: block;
+  }
+
+  .nav-collapsed .nav-links {
+    display: none;
+  }
+
+  .nav-collapsed .nav-panel {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-end: 0;
+    z-index: var(--z-drawer);
+    display: block;
+    width: min(280px, 85vw);
+    height: 100dvh;
+    overflow-y: auto;
+    padding: var(--space-lg) var(--space-md) calc(var(--space-lg) + env(safe-area-inset-bottom));
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-lg);
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform var(--transition-normal), visibility 0s linear var(--transition-normal);
+  }
+
+  [dir="rtl"] .nav-collapsed .nav-panel {
+    transform: translateX(-100%);
+  }
+
+  .nav-collapsed .nav-checkbox:checked ~ .nav-panel {
+    transform: none;
+    visibility: visible;
+  }
+
+  .nav-collapsed .nav-checkbox:checked ~ .nav-overlay {
+    display: block;
+    visibility: visible;
+    opacity: 1;
+  }
 }

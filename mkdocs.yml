@@ -1,4 +1,5 @@
 site_name: Anime Quotes
+site_url: https://apimgr-anime.readthedocs.io
 site_description: Public read-only anime quotes API and browser
 site_author: apimgr
 repo_name: apimgr/anime
@@ -37,6 +38,8 @@ theme:
   font:
     text: Roboto
     code: Roboto Mono
+  icon:
+    repo: fontawesome/brands/github
 extra_css:
   - stylesheets/dark.css
   - stylesheets/light.css
@@ -45,19 +48,48 @@ plugins:
   - minify:
       minify_html: true
 markdown_extensions:
+  - abbr
   - admonition
   - attr_list
   - def_list
   - footnotes
+  - meta
+  - md_in_html
   - tables
   - toc:
       permalink: true
       toc_depth: 3
   - pymdownx.details
-  - pymdownx.highlight
-  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+      user: apimgr
+      repo: anime
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
 nav:
   - Home: index.md
   - Getting Started:
@@ -68,7 +100,11 @@ nav:
     - CLI: cli.md
     - Security: security.md
     - Integrations: integrations.md
-  - Development: development.md
-  - Translating: translating.md
+  - Development:
+    - Contributing: development.md
+    - Translating: translating.md
 extra:
+  social:
+    - icon: fontawesome/brands/git-alt
+      link: https://github.com/apimgr/anime
   generator: false

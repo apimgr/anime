@@ -56,13 +56,19 @@
   },
   "a11y": {
     "skip_to_content": "Aller au contenu principal",
-    "skip_to_navigation": "Aller à la navigation"
+    "skip_to_navigation": "Aller à la navigation",
+    "recovery_title": "Cette page n'a pas pu se charger",
+    "recovery_description": "Rechargez la page. Si le problème persiste, effacez les données en cache de ce site.",
+    "recovery_reload": "Recharger la page",
+    "close_notification": "Fermer la notification",
+    "close_dialog": "Fermer la boîte de dialogue"
   },
   "nav": {
     "main_navigation": "Navigation principale",
     "home": "Accueil",
     "all_quotes": "Toutes les citations",
     "toggle_navigation": "Afficher ou masquer la navigation",
+    "close_navigation": "Fermer la navigation",
     "preferences": "Préférences"
   },
   "theme": {

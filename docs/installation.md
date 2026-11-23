@@ -17,7 +17,7 @@ Download the matching `anime-{os}-{arch}` release artifact, install it on the ta
 
 The companion `anime-cli-{os}-{arch}` binary calls an existing service; pass `--server` or set `ANIME_SERVER_PRIMARY`.
 
-Prebuilt server and CLI artifacts are published for Linux, macOS, Windows, and FreeBSD on amd64 and arm64. The installer scripts are in `scripts/` for Linux, macOS, BSD, and Windows PowerShell. Review a script before running it, and use `scripts/uninstall.sh` to remove supported installations.
+Prebuilt server and CLI artifacts are published for Linux, macOS, Windows, and FreeBSD on amd64 and arm64. Installer scripts are available in `scripts/` for Linux, macOS, BSD, and Windows PowerShell. Review a script before running it. The Linux installer configures the detected init system, including systemd; `scripts/uninstall.sh` removes supported installations after confirmation.
 
 | Operating system | Architecture | Server artifact | CLI artifact |
 |---|---|---|---|
@@ -31,6 +31,18 @@ Prebuilt server and CLI artifacts are published for Linux, macOS, Windows, and F
 | FreeBSD | arm64 | `anime-freebsd-arm64` | `anime-cli-freebsd-arm64` |
 
 Use the release's published SHA-256 checksums to verify a downloaded artifact before installing it. The interactive self-update command performs checksum verification automatically. The Windows installer downloads the matching server binary; the CLI is a separate artifact.
+
+## systemd service
+
+On a Linux host with systemd, install the downloaded binary and run the service installer as root:
+
+```sh
+sudo anime --service --install
+sudo systemctl status anime
+sudo journalctl -u anime -f
+```
+
+The installer creates and enables `anime.service`. Use `systemctl restart anime` to restart it and `systemctl stop anime` to stop it. The service runs as the dedicated `anime` account. Its configuration, data, and log locations follow the paths shown by `anime --help` and the [configuration guide](configuration.md). Review the generated service unit before exposing the server publicly.
 
 ### Updates
 

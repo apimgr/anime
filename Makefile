@@ -2,7 +2,7 @@
 PROJECT_NAME := $(shell remote=$$(git remote get-url origin 2>/dev/null); if [ -n "$$remote" ]; then basename "$$remote" .git; else basename "$(PWD)"; fi)
 PROJECT_ORG := $(shell remote=$$(git remote get-url origin 2>/dev/null); if [ -n "$$remote" ]; then printf "%s\n" "$$remote" | sed -E 's|.*/([^/]+)/[^/]+(\.git)?$$|\1|'; else basename "$(dir $(PWD))"; fi)
 INTERNAL_NAME := anime
-VERSION := $(shell cat release.txt 2>/dev/null || echo "$${VERSION:-devel}")
+VERSION ?= $(shell if [ -r release.txt ]; then version=$$(tr -d '[:space:]' < release.txt); fi; if [ -n "$$version" ]; then echo "$$version"; else git rev-parse --short=7 HEAD 2>/dev/null || echo devel; fi)
 COMMIT_ID := $(shell git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)
 BUILD_EPOCH := $(shell date -u +%s)
 OFFICIAL_SITE ?= $(shell cat site.txt 2>/dev/null)
@@ -18,7 +18,7 @@ LDFLAGS := -s -w -X 'main.Version=$(VERSION)' -X 'main.CommitID=$(COMMIT_ID)' -X
 CLIENT_LDFLAGS := -s -w -X 'main.Version=$(VERSION)' -X 'main.CommitID=$(COMMIT_ID)' -X 'main.BuildEpoch=$(BUILD_EPOCH)'
 CONTAINER := docker run --rm --name $(PROJECT_NAME)-$$(tr -dc 'a-z0-9' </dev/urandom | head -c8) --memory=$(DOCKER_MEM) --cpus=$(DOCKER_CPUS) -v $(PWD):/app -v $(GO_CACHE):/usr/local/share/go/pkg/mod -v $(GO_BUILD):/usr/local/share/go/cache -w /app -e CGO_ENABLED=0 -e GOFLAGS=-buildvcs=false casjaysdev/go:latest
 
-.PHONY: dev local build test release docker clean help
+.PHONY: dev local build test release docker clean
 
 dev:
 	@mkdir -p "$(GO_CACHE)" "$(GO_BUILD)" "$${TMPDIR:-/tmp}/$(PROJECT_ORG)"
@@ -53,6 +53,3 @@ docker:
 
 clean:
 	@rm -rf $(BINDIR) $(RELDIR)
-
-help:
-	@printf '%s\n' 'dev local build test release docker clean'

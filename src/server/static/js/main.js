@@ -27,16 +27,26 @@ function showToast(message, type = 'info', duration = 3000) {
     info: 'ℹ'
   };
 
-  toast.innerHTML = `
-    <span class="toast-icon">${icons[type] || icons.info}</span>
-    <span class="toast-message">${message}</span>
-    <button class="toast-close" onclick="this.parentElement.remove()">×</button>
-  `;
+  const icon = document.createElement('span');
+  icon.className = 'toast-icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = icons[type] || icons.info;
+  const text = document.createElement('span');
+  text.className = 'toast-message';
+  text.textContent = message;
+  const close = document.createElement('button');
+  close.className = 'toast-close';
+  close.type = 'button';
+  close.dataset.action = 'close-toast';
+  close.setAttribute('aria-label', document.documentElement.dataset.closeNotification || 'Close notification');
+  close.textContent = '×';
+  close.addEventListener('click', () => toast.remove());
+  toast.append(icon, text, close);
 
   container.appendChild(toast);
 
   setTimeout(() => {
-    toast.style.opacity = '0';
+    toast.classList.add('toast-dismissed');
     setTimeout(() => toast.remove(), 300);
   }, duration);
 }
@@ -48,7 +58,7 @@ function showToast(message, type = 'info', duration = 3000) {
 /**
  * Show a modal dialog
  * @param {string} title - Modal title
- * @param {string} content - Modal content (HTML)
+ * @param {string} content - Plain-text modal content
  * @param {string} modalId - Optional modal ID
  */
 function showModal(title, content, modalId = 'dynamic-modal') {
@@ -60,18 +70,27 @@ function showModal(title, content, modalId = 'dynamic-modal') {
   const modal = document.createElement('div');
   modal.id = modalId;
   modal.className = 'modal active';
-  modal.innerHTML = `
-    <div class="modal-backdrop" onclick="closeModal('${modalId}')"></div>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>${title}</h2>
-        <button class="modal-close" onclick="closeModal('${modalId}')">×</button>
-      </div>
-      <div class="modal-body">
-        ${content}
-      </div>
-    </div>
-  `;
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.dataset.closeModal = modalId;
+  const panel = document.createElement('div');
+  panel.className = 'modal-content';
+  const header = document.createElement('div');
+  header.className = 'modal-header';
+  const heading = document.createElement('h2');
+  heading.textContent = title;
+  const close = document.createElement('button');
+  close.className = 'modal-close';
+  close.type = 'button';
+  close.dataset.closeModal = modalId;
+  close.setAttribute('aria-label', document.documentElement.dataset.closeDialog || 'Close dialog');
+  close.textContent = '×';
+  header.append(heading, close);
+  const body = document.createElement('div');
+  body.className = 'modal-body';
+  body.textContent = content;
+  panel.append(header, body);
+  modal.append(backdrop, panel);
 
   let container = document.getElementById('modal-container');
   if (!container) {
@@ -199,15 +218,6 @@ function copyQuote() {
  * Handle keyboard shortcuts
  */
 document.addEventListener('keydown', (e) => {
-  // Escape key closes modals
-  if (e.key === 'Escape') {
-    const activeModals = document.querySelectorAll('.modal.active');
-    activeModals.forEach(modal => {
-      modal.classList.remove('active');
-      setTimeout(() => modal.remove(), 300);
-    });
-  }
-
   // Space bar for new quote (on homepage)
   if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
     const getQuoteBtn = document.getElementById('get-quote-btn');
@@ -222,10 +232,87 @@ document.addEventListener('keydown', (e) => {
 // Initialization
 // ============================================
 
+const bootTimer = window.setTimeout(async () => {
+  let recovered = false;
+  try {
+    recovered = sessionStorage.getItem('anime_recovered') === '1';
+    if (!recovered) sessionStorage.setItem('anime_recovered', '1');
+  } catch {
+    recovered = true;
+  }
+  if (recovered) {
+    document.body.replaceChildren();
+    const main = document.createElement('main');
+    const title = document.createElement('h1');
+    const description = document.createElement('p');
+    const reload = document.createElement('button');
+    title.textContent = document.documentElement.dataset.recoveryTitle;
+    description.textContent = document.documentElement.dataset.recoveryDescription;
+    reload.textContent = document.documentElement.dataset.recoveryReload;
+    reload.addEventListener('click', () => window.location.reload());
+    main.append(title, description, reload);
+    document.body.append(main);
+    return;
+  }
+  try {
+    const registrations = await navigator.serviceWorker?.getRegistrations() ?? [];
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+    const names = await caches?.keys() ?? [];
+    await Promise.all(names.map((name) => caches.delete(name)));
+  } catch {
+    // The reload remains the final recovery attempt when browser storage is unavailable.
+  }
+  window.location.reload();
+}, 10000);
+
 /**
  * Initialize the application
  */
 document.addEventListener('DOMContentLoaded', () => {
+  window.clearTimeout(bootTimer);
+  try {
+    sessionStorage.removeItem('anime_recovered');
+  } catch {
+    // Session storage is optional; the page remains usable without it.
+  }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+  const menuToggle = document.getElementById('nav-toggle');
+  const menuPanel = document.getElementById('nav-panel');
+  const menuButton = document.querySelector('.mobile-menu-toggle');
+  if (menuPanel) menuPanel.inert = !menuToggle?.checked;
+  document.addEventListener('keydown', (event) => {
+    if (!menuToggle?.checked) return;
+    if (event.key === 'Escape') {
+      menuToggle.checked = false;
+      menuButton?.focus();
+      return;
+    }
+    if (event.key !== 'Tab' || !menuPanel) return;
+    const focusable = menuPanel.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])');
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+  menuToggle?.addEventListener('change', () => {
+    if (menuPanel) menuPanel.inert = !menuToggle.checked;
+    menuButton?.setAttribute('aria-expanded', String(menuToggle.checked));
+    if (menuToggle.checked) menuPanel?.querySelector('a')?.focus();
+    else menuButton?.focus();
+  });
+  const updateMenuOverflow = () => {
+    document.documentElement.classList.toggle('nav-collapsed', window.innerWidth >= 768 && Boolean(document.querySelector('.nav-links')?.scrollWidth > document.querySelector('.nav-links')?.clientWidth));
+  };
+  updateMenuOverflow();
+  window.addEventListener('resize', updateMenuOverflow);
   document.querySelectorAll('[data-action]').forEach((control) => {
     control.addEventListener('click', () => {
       switch (control.dataset.action) {
@@ -241,25 +328,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
-
-  const queryForm = document.querySelector('[data-query-form]');
-  if (queryForm) {
-    queryForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const query = document.getElementById('query').value;
-      const result = document.getElementById('result');
-      try {
-        const response = await fetch('/api/graphql', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query }),
-        });
-        result.textContent = JSON.stringify(await response.json(), null, 2);
-      } catch {
-        result.textContent = 'The query request failed. Submit the form again to retry.';
-      }
-    });
-  }
+  document.addEventListener('click', (event) => {
+    const closeControl = event.target.closest('[data-close-modal]');
+    if (closeControl) closeModal(closeControl.dataset.closeModal);
+  });
 
   const queryForm = document.querySelector('[data-query-form]');
   if (queryForm) {

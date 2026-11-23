@@ -1,16 +1,17 @@
 {{define "home-content"}}
-<!-- Hero Section -->
-<div class="hero">
-    <h1>{{.BrandingTitle}}</h1>
+<article class="container container-lg">
+<header class="page-header hero">
+    <h1 class="page-title">{{.BrandingTitle}}</h1>
     <p>{{if .BrandingTagline}}{{.BrandingTagline}}{{else}}{{t .Lang "home.hero_description"}}{{end}}</p>
     <div class="hero-actions">
         <button id="get-quote-btn" class="btn btn-primary btn-lg" data-action="random-quote">{{t .Lang "home.get_random"}}</button>
         <a href="/quotes" class="btn btn-secondary btn-lg">{{t .Lang "home.view_all"}}</a>
     </div>
-</div>
+</header>
 
 <!-- Quote Display -->
-<div class="quote-container">
+<section class="section-card quote-container" aria-labelledby="home-quote-heading">
+    <h2 id="home-quote-heading">{{t .Lang "home.random_quotes"}}</h2>
     <div class="quote-text" id="quote-text">
         {{if .Quote}}
             {{.Quote.Quote}}
@@ -40,11 +41,11 @@
         <button class="btn btn-primary" data-action="random-quote">{{t .Lang "home.next_quote"}}</button>
     </div>
     {{end}}
-</div>
+</section>
 
 <!-- Stats Section -->
-<div class="admin-section">
-    <h2 class="admin-section-title">{{t .Lang "home.statistics"}}</h2>
+<section class="section-card admin-section" aria-labelledby="home-statistics-heading">
+    <h2 id="home-statistics-heading">{{t .Lang "home.statistics"}}</h2>
     <div class="stats-grid">
         <div class="card stats-card">
             <div class="stats-value">{{.TotalQuotes}}</div>
@@ -59,15 +60,15 @@
             <div class="stats-label">{{t .Lang "home.free_open"}}</div>
         </div>
     </div>
-</div>
+</section>
 
 <!-- Features Section -->
-<div class="admin-section">
-    <h2 class="admin-section-title">{{t .Lang "home.features"}}</h2>
+<section class="section-card admin-section" aria-labelledby="home-features-heading">
+    <h2 id="home-features-heading">{{t .Lang "home.features"}}</h2>
     <div class="features-grid">
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">🎲 {{t .Lang "home.random_quotes"}}</h3>
+                <h2 class="card-title">🎲 {{t .Lang "home.random_quotes"}}</h2>
             </div>
             <div class="card-body">
                 <p>{{t .Lang "home.random_quotes_description"}}</p>
@@ -79,7 +80,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">📚 {{t .Lang "home.all_quotes"}}</h3>
+                <h2 class="card-title">📚 {{t .Lang "home.all_quotes"}}</h2>
             </div>
             <div class="card-body">
                 <p>{{t .Lang "home.all_quotes_description"}}</p>
@@ -91,7 +92,7 @@
 
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">❤️ {{t .Lang "home.health_check"}}</h3>
+                <h2 class="card-title">❤️ {{t .Lang "home.health_check"}}</h2>
             </div>
             <div class="card-body">
                 <p>{{t .Lang "home.health_check_description"}}</p>
@@ -102,16 +103,16 @@
         </div>
 
         <div class="card">
-            <div class="card-header"><h3 class="card-title">🔓 {{t .Lang "home.public_read_only"}}</h3></div>
+            <div class="card-header"><h2 class="card-title">🔓 {{t .Lang "home.public_read_only"}}</h2></div>
             <div class="card-body"><p>{{t .Lang "home.public_read_only_description"}}</p></div>
             <div class="card-footer"><span class="badge badge-success">{{t .Lang "home.open_source"}}</span></div>
         </div>
     </div>
-</div>
+</section>
 
 <!-- API Usage Examples -->
-<div class="admin-section">
-    <h2 class="admin-section-title">{{t .Lang "home.quick_start"}}</h2>
+<section class="section-card admin-section" aria-labelledby="home-quick-start-heading">
+    <h2 id="home-quick-start-heading">{{t .Lang "home.quick_start"}}</h2>
     <div class="card">
         <div class="card-header">
             <h3 class="card-title">{{t .Lang "home.api_examples"}}</h3>
@@ -134,6 +135,7 @@
 }</code></pre>
         </div>
     </div>
-</div>
+</section>
 
+</article>
 {{end}}

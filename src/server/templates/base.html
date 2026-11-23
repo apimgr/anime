@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{.Lang}}" dir="{{.Dir}}" data-theme="{{.Theme}}">
+<html lang="{{.Lang}}" dir="{{.Dir}}" data-theme="{{.Theme}}" data-recovery-title="{{t .Lang "a11y.recovery_title"}}" data-recovery-description="{{t .Lang "a11y.recovery_description"}}" data-recovery-reload="{{t .Lang "a11y.recovery_reload"}}" data-close-notification="{{t .Lang "a11y.close_notification"}}" data-close-dialog="{{t .Lang "a11y.close_dialog"}}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,22 +28,22 @@
     {{if .TwitterCreator}}<meta name="twitter:creator" content="{{.TwitterCreator}}">{{end}}
     {{end}}
     <script type="application/ld+json">{{jsonLD .StructuredData}}</script>
-    <link rel="stylesheet" href="/static/css/main.css">
-    <link rel="icon" href="{{if .Favicon}}{{.Favicon}}{{else}}/static/images/favicon.png{{end}}">
+    <link rel="stylesheet" href="{{asset "/static/css/main.css"}}">
+    <link rel="icon" href="{{if .Favicon}}{{.Favicon}}{{else}}{{asset "/static/images/favicon.png"}}{{end}}">
+    <link rel="manifest" href="/manifest.json">
 </head>
 <body>
     <a class="skip-link" href="#main-content">{{t .Lang "a11y.skip_to_content"}}</a>
     <a class="skip-link" href="#main-nav">{{t .Lang "a11y.skip_to_navigation"}}</a>
+    <input class="nav-checkbox" id="nav-toggle" type="checkbox" hidden>
     <!-- Main Header -->
-    <header id="main-header">
-        <div class="header-container">
+    <header id="main-header" class="header-container">
             <a class="logo" href="/">{{if .BrandingLogo}}<img src="{{.BrandingLogo}}" alt="{{.BrandingTitle}}">{{else}}{{.BrandingTitle}}{{end}}</a>
-            <input class="mobile-menu-state" id="mobile-menu-state" type="checkbox">
             <nav id="main-nav" class="nav-links" aria-label="{{t .Lang "nav.main_navigation"}}">
                 <a href="/" {{if eq .Page "home"}}class="active" aria-current="page"{{end}}>{{t .Lang "nav.home"}}</a>
                 <a href="/quotes" {{if eq .Page "quotes"}}class="active" aria-current="page"{{end}}>{{t .Lang "nav.all_quotes"}}</a>
             </nav>
-            <label class="mobile-menu-toggle" for="mobile-menu-state" aria-label="{{t .Lang "nav.toggle_navigation"}}">☰</label>
+            <label class="mobile-menu-toggle" for="nav-toggle" aria-label="{{t .Lang "nav.toggle_navigation"}}" aria-controls="nav-panel" aria-expanded="false">☰</label>
             <div class="header-actions">
                 <a href="/server/preferences" aria-label="{{t .Lang "nav.preferences"}}">{{t .Lang "nav.preferences"}}</a>
                 <form method="post" action="/server/preferences" class="theme-toggle-form">
@@ -55,7 +55,6 @@
                     </button>
                 </form>
             </div>
-        </div>
         {{if .OperatorHeader}}<div class="branding-header-content">{{.OperatorHeader}}</div>{{end}}
     </header>
 
@@ -72,11 +71,19 @@
         {{if eq .ContentTemplate "preferences-sync-content"}}{{template "preferences-sync-content" .}}{{end}}
         {{if eq .ContentTemplate "tokens-content"}}{{template "tokens-content" .}}{{end}}
         {{if eq .ContentTemplate "security-content"}}{{template "security-content" .}}{{end}}
+        {{if eq .ContentTemplate "security-report-content"}}{{template "security-report-content" .}}{{end}}
         {{if eq .ContentTemplate "contact-content"}}{{template "contact-content" .}}{{end}}
         {{if eq .ContentTemplate "contact-review-content"}}{{template "contact-review-content" .}}{{end}}
         {{if eq .ContentTemplate "contact-success-content"}}{{template "contact-success-content" .}}{{end}}
         {{if eq .ContentTemplate "error-content"}}{{template "error-content" .}}{{end}}
     </main>
+
+    <nav class="nav-panel" id="nav-panel" aria-label="{{t .Lang "nav.main_navigation"}}">
+        <label class="nav-close" for="nav-toggle" aria-label="{{t .Lang "nav.close_navigation"}}">×</label>
+        <a href="/" {{if eq .Page "home"}}class="active" aria-current="page"{{end}}>{{t .Lang "nav.home"}}</a>
+        <a href="/quotes" {{if eq .Page "quotes"}}class="active" aria-current="page"{{end}}>{{t .Lang "nav.all_quotes"}}</a>
+    </nav>
+    <label class="nav-overlay" for="nav-toggle" aria-label="{{t .Lang "nav.toggle_navigation"}}"></label>
 
     {{if .OperatorFooter}}<div class="branding-footer-content">{{.OperatorFooter}}</div>{{else if not .FooterContentConfigured}}<div class="branding-footer-content"><p><a href="https://github.com/apimgr/anime">Made with</a> ❤️ · {{.Version}}</p></div>{{end}}
 
@@ -120,6 +127,6 @@
     <div id="modal-container"></div>
 
     <!-- Main JavaScript -->
-    <script src="/static/js/main.js" defer></script>
+    <script src="{{asset "/static/js/main.js"}}" defer></script>
 </body>
 </html>

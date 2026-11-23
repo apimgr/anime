@@ -56,13 +56,19 @@
   },
   "a11y": {
     "skip_to_content": "Skip to main content",
-    "skip_to_navigation": "Skip to navigation"
+    "skip_to_navigation": "Skip to navigation",
+    "recovery_title": "This page could not load",
+    "recovery_description": "Reload the page to try again. If the problem continues, clear this site's cached data.",
+    "recovery_reload": "Reload page",
+    "close_notification": "Close notification",
+    "close_dialog": "Close dialog"
   },
   "nav": {
     "main_navigation": "Main navigation",
     "home": "Home",
     "all_quotes": "All Quotes",
     "toggle_navigation": "Toggle navigation",
+    "close_navigation": "Close navigation",
     "preferences": "Preferences"
   },
   "theme": {

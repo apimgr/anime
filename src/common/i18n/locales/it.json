@@ -56,13 +56,19 @@
   },
   "a11y": {
     "skip_to_content": "Vai al contenuto principale",
-    "skip_to_navigation": "Vai alla navigazione"
+    "skip_to_navigation": "Vai alla navigazione",
+    "recovery_title": "Impossibile caricare la pagina",
+    "recovery_description": "Ricarica la pagina. Se il problema persiste, cancella i dati memorizzati nella cache di questo sito.",
+    "recovery_reload": "Ricarica la pagina",
+    "close_notification": "Chiudi notifica",
+    "close_dialog": "Chiudi finestra di dialogo"
   },
   "nav": {
     "main_navigation": "Navigazione principale",
     "home": "Home",
     "all_quotes": "Tutte le citazioni",
     "toggle_navigation": "Mostra o nascondi la navigazione",
+    "close_navigation": "Chiudi la navigazione",
     "preferences": "Preferenze"
   },
   "theme": {
