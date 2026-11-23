@@ -18,6 +18,7 @@ type tuiModel struct {
 	serverURL  string
 	apiVersion string
 	timeout    string
+	lang       string
 	theme      string
 	mouse      bool
 	unicode    bool
@@ -45,12 +46,12 @@ type quotesLoaded struct {
 	err    error
 }
 
-func runTUI(serverURL, apiVersion, timeout, theme string, mouse, unicode bool) error {
+func runTUI(serverURL, apiVersion, timeout, lang, theme string, mouse, unicode bool) error {
 	options := []tea.ProgramOption{tea.WithAltScreen()}
 	if mouse {
 		options = append(options, tea.WithMouseCellMotion())
 	}
-	_, err := tea.NewProgram(tuiModel{serverURL: serverURL, apiVersion: apiVersion, timeout: timeout, theme: theme, mouse: mouse, unicode: unicode, width: 80, height: 24}, options...).Run()
+	_, err := tea.NewProgram(tuiModel{serverURL: serverURL, apiVersion: apiVersion, timeout: timeout, lang: lang, theme: theme, mouse: mouse, unicode: unicode, width: 80, height: 24}, options...).Run()
 	return err
 }
 
@@ -195,6 +196,7 @@ func (m tuiModel) load(action, query string) tea.Cmd {
 			return quotesLoaded{err: err}
 		}
 		request.Header.Set("User-Agent", projectName+"-cli/"+Version)
+		request.Header.Set("Accept-Language", m.lang)
 		timeout, err := time.ParseDuration(m.timeout)
 		if err != nil || timeout <= 0 {
 			timeout = 30 * time.Second
@@ -203,7 +205,7 @@ func (m tuiModel) load(action, query string) tea.Cmd {
 		if err != nil {
 			return quotesLoaded{err: err}
 		}
-		defer response.Body.Close()
+		defer func() { _ = response.Body.Close() }()
 		if response.StatusCode < 200 || response.StatusCode >= 300 {
 			return quotesLoaded{err: fmt.Errorf("server returned %s", response.Status)}
 		}

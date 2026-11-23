@@ -22,7 +22,7 @@ func replaceBinary(currentPath, verifiedPath string) error {
 		return fmt.Errorf("stage update beside executable: %w", err)
 	}
 	stagedPath := staged.Name()
-	defer os.Remove(stagedPath)
+	defer func() { _ = os.Remove(stagedPath) }()
 	source, err := os.Open(verifiedPath)
 	if err != nil {
 		_ = staged.Close()

@@ -126,7 +126,10 @@ func TestClientLoggingAndRequestRetries(t *testing.T) {
 	}
 
 	attempts := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.Header.Get("Accept-Language") != "fr" {
+			t.Errorf("Accept-Language header = %q", request.Header.Get("Accept-Language"))
+		}
 		attempts++
 		if attempts < 3 {
 			http.Error(w, "temporary", http.StatusServiceUnavailable)
@@ -135,7 +138,7 @@ func TestClientLoggingAndRequestRetries(t *testing.T) {
 		_, _ = w.Write([]byte("ok"))
 	}))
 	defer server.Close()
-	body, err := fetchResponse(server.URL, time.Second, 2, 0)
+	body, err := fetchResponse(server.URL, time.Second, 2, 0, "fr")
 	if err != nil || string(body) != "ok" || attempts != 3 {
 		t.Fatalf("response=%q attempts=%d err=%v", body, attempts, err)
 	}
@@ -154,6 +157,7 @@ func TestClientConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	settings.Server.Primary = "https://quotes.example"
+	settings.Lang = "de"
 	settings.Output.Format = "yaml"
 	settings.TUI.Theme = "light"
 	if err := saveCLIConfig(settings); err != nil {
@@ -163,18 +167,18 @@ func TestClientConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if loaded.Server.Primary != settings.Server.Primary || loaded.Output.Format != settings.Output.Format || loaded.TUI.Theme != settings.TUI.Theme {
+	if loaded.Lang != settings.Lang || loaded.Server.Primary != settings.Server.Primary || loaded.Output.Format != settings.Output.Format || loaded.TUI.Theme != settings.TUI.Theme {
 		t.Fatalf("configuration round trip = %#v", loaded)
 	}
 	profilePath := filepath.Join(filepath.Dir(path), "staging.yml")
-	if err := os.WriteFile(profilePath, []byte("server:\n  primary: https://staging.example\noutput:\n  format: csv\n"), 0600); err != nil {
+	if err := os.WriteFile(profilePath, []byte("lang: fr\nserver:\n  primary: https://staging.example\noutput:\n  format: csv\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	profile, err := loadCLIConfigFile("staging")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if profile.Server.Primary != "https://staging.example" || profile.Output.Format != "csv" || profile.TUI.Theme != "dark" {
+	if profile.Lang != "fr" || profile.Server.Primary != "https://staging.example" || profile.Output.Format != "csv" || profile.TUI.Theme != "dark" {
 		t.Fatalf("profile configuration = %#v", profile)
 	}
 	info, err := os.Stat(path)
@@ -205,9 +209,15 @@ func TestClientConfiguration(t *testing.T) {
 }
 
 func TestRunHTTPActionsAndFailures(t *testing.T) {
+	expectedLanguage := "en"
+	t.Setenv("LANG", "en_US.UTF-8")
+	t.Setenv("LC_ALL", "")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Accept") != "application/json" {
 			t.Errorf("Accept header = %q", r.Header.Get("Accept"))
+		}
+		if r.Header.Get("Accept-Language") != expectedLanguage {
+			t.Errorf("Accept-Language header = %q, want %q", r.Header.Get("Accept-Language"), expectedLanguage)
 		}
 		switch r.URL.Path {
 		case "/api/v1/random":
@@ -248,9 +258,11 @@ func TestRunHTTPActionsAndFailures(t *testing.T) {
 	if err := run([]string{"--server", "http://127.0.0.1:1", "random"}, &out, &errOut); err == nil {
 		t.Fatal("unavailable server succeeded")
 	}
+	expectedLanguage = "fr"
 	if err := run([]string{"--lang", "fr", "--server", server.URL, "random"}, &out, &errOut); err != nil {
-		t.Fatalf("unsupported language did not fall back to English: %v", err)
+		t.Fatalf("supported language request failed: %v", err)
 	}
+	expectedLanguage = "en"
 	if err := run([]string{"--server", server.URL + "/", "random"}, &out, &errOut); err != nil {
 		t.Fatalf("trailing slash server URL: %v", err)
 	}

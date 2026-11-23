@@ -148,7 +148,7 @@ func (c *Client) AssetChecksums(ctx context.Context, release *Release) (map[stri
 	if err != nil {
 		return nil, fmt.Errorf("download release checksums: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("release checksums returned HTTP %d", response.StatusCode)
 	}
@@ -178,10 +178,10 @@ func (c *Client) AssetURL(release *Release, assetName string) (string, error) {
 		return "", err
 	}
 	parsed, err := url.Parse(assetURL)
-	if err != nil || parsed.User != nil || (parsed.Scheme != "https" && !(c.AllowHTTP && parsed.Scheme == "http")) {
+	if err != nil || parsed.User != nil || (parsed.Scheme != "https" && (!c.AllowHTTP || parsed.Scheme != "http")) {
 		return "", errors.New("release asset URL must use the official HTTPS GitHub host")
 	}
-	if parsed.Host != "github.com" && !(c.AllowHTTP && (parsed.Hostname() == "127.0.0.1" || parsed.Hostname() == "localhost")) {
+	if parsed.Host != "github.com" && (!c.AllowHTTP || (parsed.Hostname() != "127.0.0.1" && parsed.Hostname() != "localhost")) {
 		return "", errors.New("release asset URL must use the official HTTPS GitHub host")
 	}
 	return assetURL, nil
@@ -198,7 +198,7 @@ func (c *Client) getJSON(ctx context.Context, endpoint string, target interface{
 	if err != nil {
 		return 0, fmt.Errorf("request release metadata: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode == http.StatusNotFound {
 		return response.StatusCode, nil
 	}
@@ -284,7 +284,7 @@ func (c *Client) download(ctx context.Context, source, destination string, limit
 	if err != nil {
 		return fmt.Errorf("download update asset: %w", err)
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("update asset returned HTTP %d", response.StatusCode)
 	}
@@ -315,7 +315,7 @@ func (c *Client) apiBase() (string, error) {
 		return "", errors.New("release API base URL is empty")
 	}
 	parsed, err := url.Parse(c.APIBase)
-	if err != nil || parsed.Host == "" || (parsed.Scheme != "https" && !(c.AllowHTTP && parsed.Scheme == "http")) {
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "https" && (!c.AllowHTTP || parsed.Scheme != "http")) {
 		return "", errors.New("release API base URL must be an absolute HTTPS URL")
 	}
 	return strings.TrimRight(parsed.String(), "/"), nil
@@ -323,7 +323,7 @@ func (c *Client) apiBase() (string, error) {
 
 func (c *Client) validateDownloadURL(raw string) error {
 	parsed, err := url.Parse(raw)
-	if err != nil || parsed.Host == "" || (parsed.Scheme != "https" && !(c.AllowHTTP && parsed.Scheme == "http")) || parsed.User != nil {
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "https" && (!c.AllowHTTP || parsed.Scheme != "http")) || parsed.User != nil {
 		return errors.New("release asset URL must be an absolute HTTPS URL")
 	}
 	return nil
@@ -385,7 +385,7 @@ func checksumForFile(path, assetName string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("open checksums: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	decoder := io.LimitReader(file, 1<<20)
 	contents, err := io.ReadAll(decoder)
 	if err != nil {
@@ -411,7 +411,7 @@ func VerifyChecksum(path, expected string) error {
 	if err != nil {
 		return fmt.Errorf("open downloaded update: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	hash := sha256.New()
 	if _, err := io.Copy(hash, file); err != nil {
 		return fmt.Errorf("calculate downloaded update checksum: %w", err)

@@ -43,7 +43,9 @@ func captureStdout(t *testing.T, fn func()) string {
 
 	fn()
 
-	w.Close()
+	if err := w.Close(); err != nil {
+		t.Errorf("failed to close captured stdout: %v", err)
+	}
 	os.Stdout = original
 
 	out, err := io.ReadAll(r)
@@ -248,6 +250,23 @@ func TestMaintenanceBackup(t *testing.T) {
 	}
 	if _, err := os.Stat(backupFile); err != nil {
 		t.Errorf("expected backup file to exist: %v", err)
+	}
+}
+
+func TestMaintenanceBackupTestWithoutPGPKey(t *testing.T) {
+	base := t.TempDir()
+	configDir := filepath.Join(base, "config")
+	dataDir := filepath.Join(base, "data")
+	configPath := filepath.Join(configDir, "server.yml")
+	var backupErr error
+	output := captureStdout(t, func() {
+		backupErr = maintenanceBackupTest(configDir, dataDir, configPath)
+	})
+	if backupErr != nil {
+		t.Fatalf("maintenanceBackupTest returned error: %v", backupErr)
+	}
+	if !strings.Contains(output, "no PGP keypair is configured") {
+		t.Fatalf("backup test output=%q", output)
 	}
 }
 

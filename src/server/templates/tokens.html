@@ -1,0 +1,135 @@
+{{define "tokens-content"}}
+<article class="container container-md token-page">
+    <header class="page-header">
+        <p><a href="/server/preferences">{{t .Lang "token_page.back"}}</a></p>
+        <h1 class="page-title">{{t .Lang "token_page.title"}}</h1>
+        <p class="page-lead">{{t .Lang "token_page.lead"}}</p>
+    </header>
+
+    {{if .Error}}<p class="form-error" role="alert">{{t .Lang "token_page.error"}}</p>{{end}}
+
+    {{if not .HasOwner}}
+    <section class="section-card" aria-labelledby="new-primary-token">
+        <h2 id="new-primary-token">{{t .Lang "token_page.new_token"}}</h2>
+        <p>{{t .Lang "token_page.create_primary_description"}}</p>
+        <form method="post" action="/server/preferences/token/create">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button class="button button-primary" type="submit">{{t .Lang "token_page.create_token"}}</button>
+        </form>
+        <h2 id="restore-owner-token">{{t .Lang "token_page.restore_title"}}</h2>
+        <form method="post" action="/server/preferences/token/restore">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <div class="form-group">
+                <label for="owner-primary-token">{{t .Lang "token_page.primary_token"}}</label>
+                <input id="owner-primary-token" name="token" type="password" autocomplete="off" required maxlength="36" pattern="own_[A-Za-z0-9]{32}" placeholder="{{t .Lang "token_page.paste_primary"}}">
+            </div>
+            <button class="button button-primary" type="submit">{{t .Lang "token_page.restore_identity"}}</button>
+        </form>
+    </section>
+    {{else}}
+    <div class="token-layout">
+        <div class="token-primary-column">
+            <section class="section-card" id="primary" aria-labelledby="primary-token-heading">
+                <h2 id="primary-token-heading">{{t .Lang "token_page.primary_token"}}</h2>
+                <p><span class="status-badge status-good">{{t .Lang "token_page.active"}}</span></p>
+                <p class="copy-value" aria-label="{{t .Lang "token_page.primary_token"}}">{{if .PrimarySecret}}{{.SecretToken}}{{else}}{{.PrimaryToken}}{{end}}</p>
+                {{if .PrimarySecret}}<p>{{t .Lang "token_page.shown_page_load"}}</p>{{else}}<p>{{tf .Lang "token_page.full_access_private" "resources" "items"}}</p>{{end}}
+                <div class="form-actions">
+                    <form method="post" action="/server/preferences/token/reveal">
+                        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                        <button class="button button-secondary" type="submit">{{t .Lang "token_page.reveal"}}</button>
+                    </form>
+                    <button class="button button-secondary" type="button" data-action="copy-text" data-copy-target="token-primary-value" {{if not .PrimarySecret}}disabled{{end}}>{{t .Lang "token_page.copy"}}</button>
+                    <button class="button button-danger-ghost" type="button" popovertarget="rotate-primary-confirm">{{t .Lang "token_page.rotate"}}</button>
+                    <div id="rotate-primary-confirm" class="confirm-popover" popover>
+                        <p>{{t .Lang "token_page.rotate_primary_help"}}</p>
+                        <form method="post" action="/server/preferences/token/rotate">
+                            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                            <button class="button button-danger" type="submit" name="confirm" value="yes">{{t .Lang "token_page.confirm_rotation"}}</button>
+                            <button class="button button-secondary" type="button" popovertarget="rotate-primary-confirm" popovertargetaction="hide">{{t .Lang "token_page.cancel"}}</button>
+                        </form>
+                    </div>
+                </div>
+                <span id="token-primary-value" class="visually-hidden">{{if .PrimarySecret}}{{.SecretToken}}{{end}}</span>
+            </section>
+            <section class="section-card" aria-labelledby="create-linked-token">
+                <h2 id="create-linked-token">{{t .Lang "token_page.create_linked"}}</h2>
+                {{if .CreatedToken}}<p class="status-good" role="status">{{t .Lang "token_page.new_token_label"}} <code id="created-linked-token" class="copy-value">{{.SecretToken}}</code> <button type="button" data-action="copy-text" data-copy-target="created-linked-token">{{t .Lang "token_page.copy"}}</button></p>{{end}}
+                <form method="post" action="/server/preferences/tokens">
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                    <div class="form-group">
+                        <label for="linked-token-name">{{t .Lang "token_page.name"}}</label>
+                        <input id="linked-token-name" name="name" type="text" required minlength="1" maxlength="64" autocomplete="off">
+                        <small>{{t .Lang "token_page.example_mcp"}}</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="linked-token-expiry">{{t .Lang "token_page.expiry"}}</label>
+                        <select id="linked-token-expiry" name="expiry">
+                            <option value="never">{{t .Lang "token_page.never"}}</option>
+                            <option value="7d">{{t .Lang "token_page.days_7"}}</option>
+                            <option value="30d">{{t .Lang "token_page.days_30"}}</option>
+                            <option value="90d">{{t .Lang "token_page.days_90"}}</option>
+                            <option value="1y">{{t .Lang "token_page.year_1"}}</option>
+                            <option value="custom">{{t .Lang "token_page.custom_date"}}</option>
+                        </select>
+                    </div>
+                    <details>
+                        <summary>{{t .Lang "token_page.set_custom_date"}}</summary>
+                        <div class="form-group">
+                            <label for="linked-token-custom-expiry">{{t .Lang "token_page.expires_on"}}</label>
+                            <input id="linked-token-custom-expiry" name="custom_expiry" type="date">
+                        </div>
+                    </details>
+                    <button class="button button-primary" type="submit">{{t .Lang "token_page.create_token"}}</button>
+                </form>
+            </section>
+            <section class="section-card" aria-labelledby="browser-token-heading">
+                <h2 id="browser-token-heading">{{t .Lang "token_page.this_browser"}}</h2>
+                <p>{{tf .Lang "token_page.browser_saved" "resources" "items"}}</p>
+                <button class="button button-danger-ghost" type="button" popovertarget="forget-token-confirm">{{t .Lang "token_page.forget_saved"}}</button>
+                <div id="forget-token-confirm" class="confirm-popover" popover>
+                    <p>{{tf .Lang "token_page.forget_description" "resources" "items"}}</p>
+                    <form method="post" action="/server/preferences/token/forget">
+                        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                        <button class="button button-danger" type="submit">{{t .Lang "token_page.forget_token"}}</button>
+                        <button class="button button-secondary" type="button" popovertarget="forget-token-confirm" popovertargetaction="hide">{{t .Lang "token_page.cancel"}}</button>
+                    </form>
+                </div>
+            </section>
+        </div>
+        <section class="section-card token-linked-column" aria-labelledby="linked-tokens-heading">
+            <h2 id="linked-tokens-heading">{{tf .Lang "token_page.linked_count" "count" .LinkedCount}}</h2>
+            {{if .Tokens}}
+            <div class="token-list">
+                {{range .Tokens}}
+                {{if ne .Name ""}}
+                <article class="token-card" id="token-{{.ID}}">
+                    <h3>{{.Name}}</h3>
+                    <p><span class="status-badge status-{{.Status}}">{{t $.Lang (printf "token_page.status_%s" .Status)}}</span></p>
+                    <p class="copy-value">{{if .RevealedToken}}{{.RevealedToken}}{{else}}{{.Masked}}{{end}}</p>
+                    {{if .RevealedToken}}<button class="button button-secondary" type="button" data-action="copy-text" data-copy-target="linked-token-value-{{.ID}}">{{t $.Lang "token_page.copy"}}</button><span id="linked-token-value-{{.ID}}" class="visually-hidden">{{.RevealedToken}}</span>{{end}}
+                    <dl>
+                        <dt>{{t $.Lang "token_page.created"}}</dt><dd>{{.CreatedDisplay}}</dd>
+                        <dt>{{t $.Lang "token_page.last_used"}}</dt><dd>{{.LastUsedDisplay}}</dd>
+                        <dt>{{t $.Lang "token_page.expires"}}</dt><dd>{{.ExpiresDisplay}}</dd>
+                    </dl>
+                    <div class="form-actions">
+                        <form method="post" action="/server/preferences/tokens/{{.ID}}/reveal"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><button class="button button-secondary" type="submit">{{t $.Lang "token_page.reveal"}}</button></form>
+                        <button class="button button-danger-ghost" type="button" popovertarget="rotate-token-{{.ID}}">{{t $.Lang "token_page.rotate"}}</button>
+                        <details><summary>{{t $.Lang "token_page.edit"}}</summary><form method="post" action="/server/preferences/tokens/{{.ID}}/update"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><label for="token-name-{{.ID}}">{{t $.Lang "token_page.name"}}</label><input id="token-name-{{.ID}}" name="name" value="{{.Name}}" maxlength="64" required><label for="token-expiry-{{.ID}}">{{t $.Lang "token_page.expiry"}}</label><select id="token-expiry-{{.ID}}" name="expiry"><option value="never">{{t $.Lang "token_page.never"}}</option><option value="7d">{{t $.Lang "token_page.days_7"}}</option><option value="30d">{{t $.Lang "token_page.days_30"}}</option><option value="90d">{{t $.Lang "token_page.days_90"}}</option><option value="1y">{{t $.Lang "token_page.year_1"}}</option></select><details><summary>{{t $.Lang "token_page.set_custom_date"}}</summary><label for="custom-expiry-{{.ID}}">{{t $.Lang "token_page.expires_on"}}</label><input id="custom-expiry-{{.ID}}" name="custom_expiry" type="date"></details><button class="button button-primary" type="submit">{{t $.Lang "token_page.save"}}</button></form></details>
+                        <button class="button button-danger" type="button" popovertarget="revoke-token-{{.ID}}">{{t $.Lang "token_page.revoke"}}</button>
+                    </div>
+                    <div id="rotate-token-{{.ID}}" class="confirm-popover" popover><p>{{t $.Lang "token_page.rotate_linked_help"}}</p><form method="post" action="/server/preferences/tokens/{{.ID}}/rotate"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><button class="button button-danger" type="submit" name="confirm" value="yes">{{t $.Lang "token_page.confirm_rotation"}}</button><button class="button button-secondary" type="button" popovertarget="rotate-token-{{.ID}}" popovertargetaction="hide">{{t $.Lang "token_page.cancel"}}</button></form></div>
+                    <div id="revoke-token-{{.ID}}" class="confirm-popover" popover><p>{{t $.Lang "token_page.revoke_help"}}</p><form method="post" action="/server/preferences/tokens/{{.ID}}/revoke"><input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><button class="button button-danger" type="submit" name="confirm" value="yes">{{t $.Lang "token_page.confirm_revoke"}}</button><button class="button button-secondary" type="button" popovertarget="revoke-token-{{.ID}}" popovertargetaction="hide">{{t $.Lang "token_page.cancel"}}</button></form></div>
+                </article>
+                {{end}}
+                {{end}}
+            </div>
+            {{else}}
+            <div class="empty-state"><h3>{{t .Lang "token_page.no_linked"}}</h3><p>{{t .Lang "token_page.linked_hint"}}</p></div>
+            {{end}}
+        </section>
+    </div>
+    {{end}}
+</article>
+{{end}}

@@ -15,7 +15,7 @@ RUN apk add --no-cache git curl bash tini tor
 COPY --from=builder /build/anime /usr/local/bin/anime
 COPY --from=builder /build/anime-cli /usr/local/bin/anime-cli
 COPY docker/rootfs/ /
-ENV PORT=80 ADDRESS=:: CONFIG_DIR=/config/anime DATA_DIR=/data/anime LOGS_DIR=/data/log/anime
+ENV PORT=80 LISTEN=:: CONFIG_DIR=/config/anime DATA_DIR=/data/anime LOG_DIR=/data/log/anime
 EXPOSE 80
 STOPSIGNAL SIGRTMIN+3
 HEALTHCHECK --start-period=10m --interval=5m --timeout=15s --retries=3 CMD ["/usr/local/bin/anime", "--status"]

@@ -41,7 +41,7 @@ build:
 
 test:
 	@mkdir -p $(GO_CACHE) $(GO_BUILD) "$${TMPDIR:-/tmp}/$(PROJECT_ORG)"
-	@$(CONTAINER) sh -c '		mkdir -p "$${TMPDIR:-/tmp}/$(PROJECT_ORG)" && 		covdir=$$(mktemp -d "$${TMPDIR:-/tmp}/$(PROJECT_ORG)/$(INTERNAL_NAME)-XXXXXX") && 		trap "rm -rf $$covdir" EXIT && 		go vet ./... && govulncheck ./... && 		go test -timeout 5m -covermode=atomic -coverprofile=$$covdir/coverage.out ./... && 		go tool cover -func=$$covdir/coverage.out && 		coverage=$$(go tool cover -func=$$covdir/coverage.out | awk "/^total:/ {gsub(/%/, \"\", \$$3); print \$$3}") && 		awk -v coverage="$$coverage" "BEGIN { if (coverage+0 < 60) exit 1 }" 	'
+	@$(CONTAINER) sh -c '		mkdir -p "$${TMPDIR:-/tmp}/$(PROJECT_ORG)" && 		covdir=$$(mktemp -d "$${TMPDIR:-/tmp}/$(PROJECT_ORG)/$(INTERNAL_NAME)-XXXXXX") && 		trap "rm -rf $$covdir" EXIT && export TMPDIR="$$covdir" && 		go vet ./... && govulncheck ./... && 		go test -timeout 5m -covermode=atomic -coverprofile=$$covdir/coverage.out ./... && 		go tool cover -func=$$covdir/coverage.out && 		coverage=$$(go tool cover -func=$$covdir/coverage.out | awk "/^total:/ {gsub(/%/, \"\", \$$3); print \$$3}") && 		awk -v coverage="$$coverage" "BEGIN { if (coverage+0 < 60) exit 1 }" 	'
 
 release: build
 	@mkdir -p $(RELDIR)

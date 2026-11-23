@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/apimgr/anime/src/common/i18n"
 	"golang.org/x/term"
 	"gopkg.in/yaml.v3"
 )
@@ -58,15 +59,19 @@ func run(args []string, out, errOut io.Writer) (runErr error) {
 		return err
 	}
 	if *help {
-		fmt.Fprintf(out, "Usage: %s [flags] <random|list|search> [terms]\n\n", filepath.Base(os.Args[0]))
+		if _, err := fmt.Fprintf(out, "Usage: %s [flags] <random|list|search> [terms]\n\n", filepath.Base(os.Args[0])); err != nil {
+			return err
+		}
 		fs.SetOutput(out)
 		fs.PrintDefaults()
-		fmt.Fprintln(out, "\nCommands:\n  random       Fetch a random quote\n  list         List quotes\n  search TEXT  Search quote, anime, and character text")
+		if _, err := fmt.Fprintln(out, "\nCommands:\n  random       Fetch a random quote\n  list         List quotes\n  search TEXT  Search quote, anime, and character text"); err != nil {
+			return err
+		}
 		return nil
 	}
 	if *showVersion {
-		fmt.Fprintf(out, "%s %s (%s) built %s\n", filepath.Base(os.Args[0]), Version, CommitID, clientBuildDate())
-		return nil
+		_, err := fmt.Fprintf(out, "%s %s (%s) built %s\n", filepath.Base(os.Args[0]), Version, CommitID, clientBuildDate())
+		return err
 	}
 	if *shell != "" {
 		return printClientShell(out, *shell, fs.Args())
@@ -138,12 +143,17 @@ func run(args []string, out, errOut io.Writer) (runErr error) {
 		*color = "no"
 	}
 	if *lang == "auto" {
-		*lang = strings.SplitN(os.Getenv("LANG"), ".", 2)[0]
+		*lang = settings.Lang
+	}
+	if *lang == "" || *lang == "auto" {
+		*lang = os.Getenv("LC_ALL")
 		if *lang == "" {
-			*lang = "en"
+			*lang = os.Getenv("LANG")
 		}
 	}
-	if *lang != "en" && !strings.HasPrefix(*lang, "en_") && !strings.HasPrefix(*lang, "en-") {
+	if canonical, ok := i18n.CanonicalLanguage(*lang); ok {
+		*lang = canonical
+	} else {
 		*lang = "en"
 	}
 	if *serverURL == "" {
@@ -166,7 +176,7 @@ func run(args []string, out, errOut io.Writer) (runErr error) {
 		}
 	}
 	if fs.NArg() == 0 && isTerminal() && settings.TUI.Enabled {
-		return runTUI(*serverURL, settings.Server.APIVersion, settings.Server.Timeout, settings.TUI.Theme, settings.TUI.Mouse, settings.TUI.Unicode)
+		return runTUI(*serverURL, settings.Server.APIVersion, settings.Server.Timeout, *lang, settings.TUI.Theme, settings.TUI.Mouse, settings.TUI.Unicode)
 	}
 	if fs.NArg() == 0 {
 		return errors.New("command required: random, list, or search")
@@ -221,9 +231,11 @@ func run(args []string, out, errOut io.Writer) (runErr error) {
 	}
 	if body == nil {
 		if !settings.Output.Quiet && (*debug || settings.Debug || settings.Output.Verbose || os.Getenv("ANIME_DEBUG") == "true") {
-			fmt.Fprintf(errOut, "GET %s\n", requestURL)
+			if _, err := fmt.Fprintf(errOut, "GET %s\n", requestURL); err != nil {
+				return err
+			}
 		}
-		body, err = fetchResponse(requestURL, timeout, settings.Server.Retry, retryDelay)
+		body, err = fetchResponse(requestURL, timeout, settings.Server.Retry, retryDelay, *lang)
 		if err != nil {
 			return fmt.Errorf("request failed: %w", err)
 		}
@@ -249,8 +261,9 @@ func run(args []string, out, errOut io.Writer) (runErr error) {
 }
 
 func render(out io.Writer, value interface{}) error {
-	writeQuote := func(item map[string]interface{}) {
-		fmt.Fprintf(out, "Quote: %v\nCharacter: %v\nAnime: %v\n\n", item["quote"], item["character"], item["anime"])
+	writeQuote := func(item map[string]interface{}) error {
+		_, err := fmt.Fprintf(out, "Quote: %v\nCharacter: %v\nAnime: %v\n\n", item["quote"], item["character"], item["anime"])
+		return err
 	}
 	if envelope, ok := value.(map[string]interface{}); ok {
 		if data, exists := envelope["data"]; exists {
@@ -259,11 +272,13 @@ func render(out io.Writer, value interface{}) error {
 	}
 	switch v := value.(type) {
 	case map[string]interface{}:
-		writeQuote(v)
+		return writeQuote(v)
 	case []interface{}:
 		for _, item := range v {
 			if quote, ok := item.(map[string]interface{}); ok {
-				writeQuote(quote)
+				if err := writeQuote(quote); err != nil {
+					return err
+				}
 			}
 		}
 	default:
@@ -328,7 +343,7 @@ func renderFormat(out io.Writer, value interface{}, format string, useColor bool
 	}
 }
 
-func fetchResponse(requestURL string, timeout time.Duration, retries int, retryDelay time.Duration) ([]byte, error) {
+func fetchResponse(requestURL string, timeout time.Duration, retries int, retryDelay time.Duration, lang string) ([]byte, error) {
 	client := &http.Client{Timeout: timeout}
 	var lastErr error
 	for attempt := 0; attempt <= retries; attempt++ {
@@ -337,6 +352,7 @@ func fetchResponse(requestURL string, timeout time.Duration, retries int, retryD
 			return nil, err
 		}
 		request.Header.Set("Accept", "application/json")
+		request.Header.Set("Accept-Language", lang)
 		request.Header.Set("User-Agent", projectName+"-cli/"+Version)
 		response, err := client.Do(request)
 		if err != nil {
@@ -527,6 +543,7 @@ func responseQuotes(value interface{}) ([]quoteRecord, error) {
 }
 
 type cliSettings struct {
+	Lang   string `yaml:"lang"`
 	Server struct {
 		Primary    string `yaml:"primary"`
 		APIVersion string `yaml:"api_version"`
@@ -810,41 +827,49 @@ func printClientShell(out io.Writer, command string, args []string) error {
 	if command == "init" {
 		switch shell {
 		case "bash", "zsh":
-			fmt.Fprintf(out, "source <(%s --shell completions %s)\n", name, shell)
+			_, err := fmt.Fprintf(out, "source <(%s --shell completions %s)\n", name, shell)
+			return err
 		case "fish":
-			fmt.Fprintf(out, "%s --shell completions fish | source\n", name)
+			_, err := fmt.Fprintf(out, "%s --shell completions fish | source\n", name)
+			return err
 		case "sh", "dash", "ksh":
-			fmt.Fprintf(out, "eval \"$(%s --shell completions %s)\"\n", name, shell)
+			_, err := fmt.Fprintf(out, "eval \"$(%s --shell completions %s)\"\n", name, shell)
+			return err
 		case "powershell", "pwsh":
-			fmt.Fprintf(out, "Invoke-Expression (& %s --shell completions powershell)\n", name)
+			_, err := fmt.Fprintf(out, "Invoke-Expression (& %s --shell completions powershell)\n", name)
+			return err
 		default:
 			return fmt.Errorf("unsupported shell %q", shell)
 		}
-		return nil
 	}
 	if command != "completions" {
 		return errors.New("--shell expects completions or init")
 	}
 	commands := "random list search"
 	flags := "--server --config --output --format --color --lang --shell --debug --help --version"
+	write := func(format string, args ...interface{}) error {
+		_, err := fmt.Fprintf(out, format, args...)
+		return err
+	}
 	switch shell {
 	case "bash":
-		fmt.Fprintf(out, "_%s_complete() {\n  local cur prev\n  cur=\"${COMP_WORDS[COMP_CWORD]}\"\n  prev=\"${COMP_WORDS[COMP_CWORD-1]}\"\n  case \"$prev\" in --server|--config|--output|--format|--color|--lang|--shell) return ;; esac\n  COMPREPLY=( $(compgen -W '%s %s' -- \"$cur\") )\n}\ncomplete -F _%s_complete %s\n", completionFunctionName(name), commands, flags, completionFunctionName(name), name)
+		return write("_%s_complete() {\n  local cur prev\n  cur=\"${COMP_WORDS[COMP_CWORD]}\"\n  prev=\"${COMP_WORDS[COMP_CWORD-1]}\"\n  case \"$prev\" in --server|--config|--output|--format|--color|--lang|--shell) return ;; esac\n  COMPREPLY=( $(compgen -W '%s %s' -- \"$cur\") )\n}\ncomplete -F _%s_complete %s\n", completionFunctionName(name), commands, flags, completionFunctionName(name), name)
 	case "zsh":
-		fmt.Fprintf(out, "#compdef %s\n_arguments '1:command:(%s)' '--server[Server base URL]:URL:' '--config[Configuration profile or file]:file:_files' '--output[Output format]:(table json yaml plain csv)' '--format[Output format]:(table json yaml plain csv)' '--color[Color output]:(auto yes no)' '--lang[Language code]:' '--shell[Shell integration]:(completions init)' '--debug[Enable debug output]' '--help[Show help]' '--version[Show version]'\n", name, commands)
+		return write("#compdef %s\n_arguments '1:command:(%s)' '--server[Server base URL]:URL:' '--config[Configuration profile or file]:file:_files' '--output[Output format]:(table json yaml plain csv)' '--format[Output format]:(table json yaml plain csv)' '--color[Color output]:(auto yes no)' '--lang[Language code]:' '--shell[Shell integration]:(completions init)' '--debug[Enable debug output]' '--help[Show help]' '--version[Show version]'\n", name, commands)
 	case "fish":
 		for _, item := range strings.Fields(commands) {
-			fmt.Fprintf(out, "complete -c %s -f -n '__fish_use_subcommand' -a %s\n", name, item)
+			if err := write("complete -c %s -f -n '__fish_use_subcommand' -a %s\n", name, item); err != nil {
+				return err
+			}
 		}
-		fmt.Fprintf(out, "complete -c %s -l server -r -d 'Server base URL'\ncomplete -c %s -l config -r -F -d 'Configuration profile or file'\ncomplete -c %s -l output -r -a 'table json yaml plain csv'\ncomplete -c %s -l format -r -a 'table json yaml plain csv'\ncomplete -c %s -l color -r -a 'auto yes no'\ncomplete -c %s -l lang -r\ncomplete -c %s -l shell -r -a 'completions init'\ncomplete -c %s -l debug\ncomplete -c %s -l help\ncomplete -c %s -l version\n", name, name, name, name, name, name, name, name, name, name)
+		return write("complete -c %s -l server -r -d 'Server base URL'\ncomplete -c %s -l config -r -F -d 'Configuration profile or file'\ncomplete -c %s -l output -r -a 'table json yaml plain csv'\ncomplete -c %s -l format -r -a 'table json yaml plain csv'\ncomplete -c %s -l color -r -a 'auto yes no'\ncomplete -c %s -l lang -r\ncomplete -c %s -l shell -r -a 'completions init'\ncomplete -c %s -l debug\ncomplete -c %s -l help\ncomplete -c %s -l version\n", name, name, name, name, name, name, name, name, name, name)
 	case "sh", "dash", "ksh":
-		fmt.Fprintf(out, "_%s_candidates() { printf '%%s\\n' '%s %s'; }\n", completionFunctionName(name), commands, flags)
+		return write("_%s_candidates() { printf '%%s\\n' '%s %s'; }\n", completionFunctionName(name), commands, flags)
 	case "powershell", "pwsh":
-		fmt.Fprintf(out, "Register-ArgumentCompleter -Native -CommandName '%s' -ScriptBlock { param($wordToComplete, $commandAst, $cursorPosition) '%s %s'.Split(' ') | Where-Object { $_.StartsWith($wordToComplete) } | ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) } }\n", name, commands, flags)
+		return write("Register-ArgumentCompleter -Native -CommandName '%s' -ScriptBlock { param($wordToComplete, $commandAst, $cursorPosition) '%s %s'.Split(' ') | Where-Object { $_.StartsWith($wordToComplete) } | ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) } }\n", name, commands, flags)
 	default:
 		return fmt.Errorf("unsupported shell %q", shell)
 	}
-	return nil
 }
 
 func completionFunctionName(binary string) string {

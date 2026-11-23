@@ -1,0 +1,498 @@
+{{define "info-content"}}
+{{if eq .Page "contact"}}
+{{template "contact-content" .}}
+{{else}}
+{{if eq .Page "about"}}
+<article class="container container-md">
+    <header class="page-header"><h1 class="page-title">{{.BrandingTitle}}</h1><p class="page-lead">{{.BrandingDescription}}</p></header>
+    <section class="section-card" aria-labelledby="about-features">
+        <h2 id="about-features">{{t .Lang "info.about.features"}}</h2>
+        <ul>
+            <li>{{t .Lang "info.about.feature_random"}}</li>
+            <li>{{t .Lang "info.about.feature_search"}}</li>
+            <li>{{t .Lang "info.about.feature_apis"}}</li>
+            <li>{{t .Lang "info.about.feature_browser"}}</li>
+        </ul>
+    </section>
+    <section class="section-card" aria-labelledby="about-service">
+        <h2 id="about-service">{{t .Lang "info.about.service"}}</h2>
+        <dl>
+            <dt>{{t .Lang "info.about.version"}}</dt><dd>{{.Version}}</dd>
+            <dt>{{t .Lang "info.about.build"}}</dt><dd>{{.BuildDate}}</dd>
+            <dt>{{t .Lang "info.about.quotes"}}</dt><dd>{{.TotalQuotes}}</dd>
+            <dt>{{t .Lang "info.about.source"}}</dt><dd><a href="https://github.com/apimgr/anime">github.com/apimgr/anime</a></dd>
+        </dl>
+    </section>
+    <p>{{t .Lang "info.about.rights_notice"}}</p>
+</article>
+{{if .OperatorAbout}}<section class="container container-md operator-page-content">{{.OperatorAbout}}</section>{{end}}
+{{else if eq .Page "help"}}
+<article class="container container-md">
+    <header class="page-header"><h1 class="page-title">{{t .Lang "info.help.title"}}</h1><p class="page-lead">{{t .Lang "info.help.intro"}}</p></header>
+    <section class="section-card" aria-labelledby="help-browse">
+        <h2 id="help-browse">{{t .Lang "info.help.browse_heading"}}</h2>
+        <p><a href="/quotes">{{t .Lang "info.help.browse_link"}}</a> {{t .Lang "info.help.browse_description"}}</p>
+    </section>
+    <section class="section-card" aria-labelledby="help-api">
+        <h2 id="help-api">{{t .Lang "info.help.api_heading"}}</h2>
+        <p>{{t .Lang "info.help.api_random"}}</p>
+        <pre><code>curl -q -LSsf "http://{{.ServerURL}}/api/v1/random"</code></pre>
+        <p>{{tf .Lang "info.help.api_search" "q" "q" "anime" "anime" "character" "character"}}</p>
+        <pre><code>curl -q -LSsf "http://{{.ServerURL}}/api/v1/quotes?q=believe&amp;anime=naruto"</code></pre>
+        <p>{{tf .Lang "info.help.api_response" "anime" "anime" "character" "character" "quote" "quote"}}</p>
+    </section>
+    <section class="section-card" aria-labelledby="help-docs">
+        <h2 id="help-docs">{{t .Lang "info.help.docs_heading"}}</h2>
+        <ul>
+            <li><a href="/server/docs/swagger">{{t .Lang "info.help.rest_reference"}}</a></li>
+            <li><a href="/server/docs/graphql">{{t .Lang "info.help.graphql_explorer"}}</a></li>
+            <li><a href="/api/v1/server/swagger">{{t .Lang "info.help.openapi_json"}}</a></li>
+        </ul>
+    </section>
+    {{if .TorEnabled}}
+    <section>
+        <h2>{{t .Lang "info.help.tor_heading"}}</h2>
+        <p><a href="http://{{.TorHostname}}">{{tf .Lang "info.help.tor_available" "address" .TorHostname}}</a></p>
+    </section>
+    {{end}}
+    <section class="section-card" aria-labelledby="help-faq">
+        <h2 id="help-faq">{{t .Lang "info.help.faq_heading"}}</h2>
+        <h3>{{t .Lang "info.help.faq_account_question"}}</h3>
+        <p>{{t .Lang "info.help.faq_account_answer"}}</p>
+        <h3>{{t .Lang "info.help.faq_submit_question"}}</h3>
+        <p>{{t .Lang "info.help.faq_submit_answer"}}</p>
+        <h3>{{t .Lang "info.help.faq_limit_question"}}</h3>
+        <p>{{t .Lang "info.help.faq_limit_answer"}}</p>
+    </section>
+    <section class="section-card" aria-labelledby="help-more">
+        <h2 id="help-more">{{t .Lang "info.help.more_heading"}}</h2>
+        <ul class="hub-list">
+            {{range .Pages}}<li><a class="hub-link" href="{{.Path}}"><span class="hub-title">{{.Title}}</span><span class="hub-desc">{{.Description}}</span></a>{{else}}<li class="empty-state">{{t $.Lang "info.help.no_pages"}}</li>{{end}}
+        </ul>
+    </section>
+</article>
+{{else if eq .Page "privacy"}}
+<article class="container container-md privacy-policy">
+    <header class="page-header"><h1 class="page-title">Privacy Policy</h1><p class="page-lead">How Anime Quotes handles requests, browser preferences, and reports.</p></header>
+    <p class="last-updated">Build: {{.BuildDate}}</p>
+    <section id="summary" class="section-card privacy-summary" aria-labelledby="privacy-summary-title">
+        <h2 id="privacy-summary-title">Summary</h2>
+        <ul><li>Quote data is embedded in the application.</li><li>{{if .DataSold}}Visitor data may be shared with or sold to third parties as described below.{{else}}We do not sell visitor data.{{end}}</li><li>Search terms may appear in request logs.</li><li>Theme, language, and consent choices stay in first-party browser cookies.</li></ul>
+    </section>
+    <section id="cookies" class="section-card" aria-labelledby="privacy-cookies">
+        <h2 id="privacy-cookies">Cookie policy</h2>
+        <ul>
+            <li><strong>Essential:</strong> {{.EssentialCookieDescription}}</li>
+            <li><strong>Preferences:</strong> {{.PreferenceCookieDescription}}</li>
+            <li><strong>Analytics:</strong> {{.AnalyticsCookieDescription}}</li>
+            <li><strong>Consent:</strong> stores the visitor's cookie-consent choice in a first-party cookie.</li>
+        </ul>
+        <p>Manage cookie choices on the <a href="/server/preferences">preferences page</a>.</p>
+    </section>
+    <section id="data-collection" class="section-card" aria-labelledby="privacy-collection">
+        <h2 id="privacy-collection">Data collection</h2>
+        <p>Search terms are sent as URL query parameters so the service can filter quotes. The server logs request method, URI, and duration; search terms may therefore appear in logged request URIs. The request address is used for rate limiting and abuse prevention.</p>
+        <p>Visitors who submit a report provide the name, reply address, and report content needed to review and respond to it.</p>
+    </section>
+    <section id="data-usage" class="section-card" aria-labelledby="privacy-usage">
+        <h2 id="privacy-usage">Data usage</h2>
+        <p>Request data supports quote search, service operation, and abuse prevention. Report details are used to review and respond to the visitor's request. {{if .DataSold}}Visitor data may be shared with or sold to third parties as described by the service operator.{{else}}Visitor data is not sold or used for targeted advertising.{{end}}</p>
+    </section>
+    <section id="data-security" class="section-card" aria-labelledby="privacy-security">
+        <h2 id="privacy-security">Data security</h2>
+        <p>Application secrets are stored with restricted file permissions. Security reports are protected at rest when stored. Operators should serve public traffic over HTTPS and restrict access to application data and logs.</p>
+    </section>
+    <section id="data-storage" class="section-card" aria-labelledby="privacy-storage">
+        <h2 id="privacy-storage">Data storage</h2>
+        <p>The quote collection is embedded in the application binary. {{if .DataStoredOnServer}}Application data is stored on this server.{{else}}Some application data is stored outside this server.{{end}} Operational secrets and short-lived form challenges are kept in the configured local database. Optional release discovery and updates use GitHub Releases.</p>
+    </section>
+    <section id="data-retention" class="section-card" aria-labelledby="privacy-retention">
+        <h2 id="privacy-retention">Data retention</h2>
+        <p>Preference values remain in the visitor's browser and are not stored as profiles. {{.PrivacyRetention}} Report retention follows the configured reporting process.</p>
+    </section>
+    <section id="third-parties" class="section-card" aria-labelledby="privacy-third-parties">
+        <h2 id="privacy-third-parties">Third parties</h2>
+        <p>Serving quotes and checking health do not contact external services. The explicit update command and CLI release discovery contact GitHub Releases.</p>
+        {{if .ThirdPartyServices}}<ul>{{range .ThirdPartyServices}}<li>{{.Name}}: {{.Purpose}}. Data sent: {{.DataSent}}. {{if .PolicyURL}}<a href="{{.PolicyURL}}">Privacy policy</a>{{end}}</li>{{end}}</ul>{{end}}
+    </section>
+    <section id="your-rights" class="section-card" aria-labelledby="privacy-rights">
+        <h2 id="privacy-rights">Your rights</h2>
+        <p>There are no visitor accounts or profiles to export. Preference values can be exported from the <a href="/server/preferences/sync">preferences sync page</a> or erased from this browser through Reset. Submit a privacy request through the configured contact information below.</p>
+    </section>
+    {{if .DataSold}}<section id="ccpa-opt-out" class="section-card" aria-labelledby="privacy-ccpa"><h2 id="privacy-ccpa">Do Not Sell or Share My Personal Information</h2><p>Use the <a href="/server/preferences">preferences page</a> to record or change your opt-out choice.</p></section>{{end}}
+    <section id="manage-preferences" class="section-card" aria-labelledby="privacy-manage">
+        <h2 id="privacy-manage">Manage preferences</h2>
+        <p><a href="/server/preferences">Open cookie and browser preferences</a> to change consent or reset noncredential site data.</p>
+    </section>
+    {{if .OperatorPrivacy}}<section class="section-card operator-page-content">{{.OperatorPrivacy}}</section>{{end}}
+    <section id="contact" class="section-card" aria-labelledby="privacy-contact">
+        <h2 id="privacy-contact">Contact</h2>
+        {{if .DPOEmail}}{{if .DPOName}}<p>{{.DPOName}}</p>{{end}}<p><a href="mailto:{{.DPOEmail}}">{{.DPOEmail}}</a></p>{{else}}<p>For privacy-related questions or requests, see the <a href="/server/security">available reporting channels</a>.</p>{{end}}
+    </section>
+</article>
+{{else if eq .Page "terms"}}
+{{if .OperatorTerms}}
+<article class="container container-md operator-page-content">{{.OperatorTerms}}</article>
+{{else}}
+<article class="container container-md">
+    <header class="page-header"><h1 class="page-title">Terms of Service</h1><p class="page-lead">Terms for using Anime Quotes API.</p></header>
+    <section class="section-card" aria-labelledby="terms-acceptance">
+        <h2 id="terms-acceptance">Acceptance</h2>
+        <p>Using Anime Quotes API means accepting these terms; stop using the service if you do not agree.</p>
+    </section>
+    <section class="section-card" aria-labelledby="terms-use">
+        <h2 id="terms-use">Acceptable use</h2>
+        <p>No unlawful use, abuse of other people, or attempt to bypass rate limits or access controls. Do not test beyond the <a href="/server/security/policy">security policy</a>.</p>
+    </section>
+    <section class="section-card" aria-labelledby="terms-liability">
+        <h2 id="terms-liability">Liability</h2>
+        <p>The service is provided as is, without warranty of any kind. To the extent the law allows, the operator is not liable for loss arising from its use.</p>
+    </section>
+    <section class="section-card" aria-labelledby="terms-changes">
+        <h2 id="terms-changes">Changes</h2>
+        <p>The terms may change; the current text on this page applies from the moment it is published.</p>
+    </section>
+    <section class="section-card" aria-labelledby="terms-governing-law">
+        <h2 id="terms-governing-law">Governing law</h2>
+        <p>The law of the place where the operator is established applies, unless the operator's own terms text names another.</p>
+    </section>
+</article>
+{{end}}
+{{else if eq .Page "dpo"}}
+<article class="container container-md">
+    <header class="page-header"><h1 class="page-title">Data Protection Officer</h1><p class="page-lead">Privacy contact information.</p></header>
+    <section class="section-card" aria-labelledby="dpo-contact">
+        <h2 id="dpo-contact">Contact</h2>
+        {{if .DPOName}}<p>{{.DPOName}}</p>{{end}}
+        {{if .DPOEmail}}<p><a href="mailto:{{.DPOEmail}}">{{.DPOEmail}}</a></p>{{else}}<p>No public contact address is configured. See the <a href="/server/security">security page</a> for reporting information.</p>{{end}}
+        <p><a href="/server/privacy">Privacy policy</a> · <a href="/server/security">Reporting information</a></p>
+    </section>
+</article>
+{{end}}
+{{end}}
+{{end}}
+
+{{define "contact-content"}}
+<article class="container container-md">
+    <header class="page-header">
+        <h1 class="page-title">{{if .ContactChooser}}Report{{else}}{{.ContactTypeTitle}}{{end}}</h1>
+        <p class="page-lead">This form is only for security reports, terms violations at a URL on this site, DMCA notices and privacy requests. It cannot be used for support, bug reports, feature requests or general questions.</p>
+    </header>
+    {{if .ContactChooser}}
+    <section class="section-card" aria-labelledby="contact-types">
+        <h2 id="contact-types">Choose a report type</h2>
+        <ul>
+            {{range .ContactTypes}}<li><a href="/server/contact?type={{.Type}}">{{.Label}}</a></li>{{end}}
+        </ul>
+    </section>
+    <section class="section-card" aria-labelledby="contact-security">
+        <h2 id="contact-security">Security issues</h2>
+        <p>To report a security vulnerability, consult our <a href="/server/security">security policy</a>.</p>
+    </section>
+    <section class="section-card" aria-labelledby="contact-abuse">
+        <h2 id="contact-abuse">Abuse reports</h2>
+        <p>To report abusive content or a terms violation, choose the type Abuse above. To send a DMCA notice, choose the type DMCA.{{if .AbuseEmail}} Or email <a href="mailto:{{.AbuseEmail}}">{{.AbuseEmail}}</a>.{{end}}</p>
+    </section>
+    {{else}}
+    {{if .ContactErrors}}<div role="alert"><p>Please correct the following fields:</p><ul>{{range $field, $message := .ContactErrors}}<li>{{$field}}: {{$message}}</li>{{end}}</ul></div>{{end}}
+    {{if .ContactError}}<p role="alert">{{.ContactError}}</p>{{end}}
+    <form class="section-card" action="/server/contact" method="post">
+        <input type="hidden" name="type" value="{{.ContactType}}">
+        <input type="hidden" name="form_token" value="{{.FormToken}}">
+        {{if .SecurityMode}}<input type="hidden" name="security_id" value="{{.SecurityID}}">{{end}}
+        {{range .ContactFields}}
+        <div class="form-field">
+            {{if eq .Type "textarea"}}
+            <label for="contact-{{.Name}}">{{.Label}}{{if .Required}} <span>(required)</span>{{else}} <span>(optional)</span>{{end}}</label>
+            <textarea id="contact-{{.Name}}" name="{{.Name}}" {{if .Required}}required{{end}} {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}}>{{index $.ContactValues .Name}}</textarea>
+            {{else if eq .Type "checkbox"}}
+            <label><input type="checkbox" name="{{.Name}}" value="true" {{if .Required}}required{{end}} {{if eq (index $.ContactValues .Name) "true"}}checked{{end}}> {{.Label}}{{if .Required}} <span>(required)</span>{{else}} <span>(optional)</span>{{end}}</label>
+            {{else if eq .Type "select"}}
+            <label for="contact-{{.Name}}">{{.Label}}{{if .Required}} <span>(required)</span>{{else if .RequiredWhen}} <span>(required when {{.RequiredWhen.Field}} is {{.RequiredWhen.Equals}})</span>{{else}} <span>(optional)</span>{{end}}</label>
+            <select id="contact-{{.Name}}" name="{{.Name}}" {{if .Required}}required{{end}}>
+                <option value="">Choose one</option>
+                {{range .Options}}<option value="{{.}}">{{.}}</option>{{end}}
+            </select>
+            {{else}}
+            <label for="contact-{{.Name}}">{{.Label}}{{if .Required}} <span>(required)</span>{{else if .RequiredWhen}} <span>(required when {{.RequiredWhen.Field}} is {{.RequiredWhen.Equals}})</span>{{else}} <span>(optional)</span>{{end}}</label>
+            <input id="contact-{{.Name}}" name="{{.Name}}" type="{{.Type}}" value="{{index $.ContactValues .Name}}" {{if .Options}}list="contact-options-{{.Name}}"{{end}} {{if .Required}}required{{end}} {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}}>
+            {{if .Options}}<datalist id="contact-options-{{.Name}}">{{range .Options}}<option value="{{.}}">{{end}}</datalist>{{end}}
+            {{end}}
+        </div>
+        {{end}}
+        {{if eq .CaptchaProvider "simple"}}
+        <div class="form-field"><label for="contact-captcha">Answer: {{.CaptchaQuestion}}</label><input id="contact-captcha" name="captcha_answer" inputmode="numeric" required><input type="hidden" name="captcha_id" value="{{.CaptchaID}}"></div>
+        {{else if eq .CaptchaProvider "recaptcha"}}
+        <div class="g-recaptcha" data-sitekey="{{.CaptchaSiteKey}}"></div>
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+        <noscript><div class="form-field"><label for="contact-captcha">Answer: {{.CaptchaQuestion}}</label><input id="contact-captcha" name="captcha_answer" inputmode="numeric" required><input type="hidden" name="captcha_id" value="{{.CaptchaID}}"></div></noscript>
+        {{else}}
+        <div class="h-captcha" data-sitekey="{{.CaptchaSiteKey}}"></div>
+        <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+        <noscript><div class="form-field"><label for="contact-captcha">Answer: {{.CaptchaQuestion}}</label><input id="contact-captcha" name="captcha_answer" inputmode="numeric" required><input type="hidden" name="captcha_id" value="{{.CaptchaID}}"></div></noscript>
+        {{end}}
+        <div class="contact-honeypot" aria-hidden="true"><label for="contact-website">Leave this field empty</label><input id="contact-website" name="website" tabindex="-1" autocomplete="off"></div>
+        <button type="submit">Send report</button>
+    </form>
+    <p>To report a security vulnerability, see <a href="/server/security">security information</a>.</p>
+    {{end}}
+</article>
+{{end}}
+
+{{define "contact-review-content"}}
+<article class="container container-md">
+    <div class="contact-review-backdrop">
+        <section class="contact-review" aria-labelledby="contact-review-title">
+            <h1 id="contact-review-title">Review your report</h1>
+            {{if .ReviewError}}<p role="alert">{{.ReviewError}}</p>{{end}}
+            <dl><dt>Email address</dt><dd class="contact-review-email">{{index .ContactValues "email" 0}}</dd><dt>Type</dt><dd>{{.ContactType}}</dd><dt>Subject</dt><dd>{{index .ContactValues "subject" 0}}</dd></dl>
+            <form method="post" action="/server/contact">
+                {{range $name, $values := .ContactValues}}{{if and (ne $name "website") (ne $name "captcha_id") (ne $name "captcha_answer") (ne $name "captcha_response") (ne $name "g-recaptcha-response") (ne $name "h-captcha-response")}}{{range $values}}<input type="hidden" name="{{$name}}" value="{{.}}">{{end}}{{end}}{{end}}
+                <input type="hidden" name="step" value="confirm">
+                <input type="hidden" name="review_token" value="{{.ReviewToken}}">
+                <label><input type="checkbox" name="confirmed" value="true" required> This email address is correct, and this is a genuine report, not an advertisement, a solicitation or spam</label>
+                <button type="submit">Confirm and send</button>
+            </form>
+            <form method="post" action="/server/contact">
+                {{range $name, $values := .ContactValues}}{{if and (ne $name "website") (ne $name "captcha_id") (ne $name "captcha_answer") (ne $name "captcha_response") (ne $name "g-recaptcha-response") (ne $name "h-captcha-response")}}{{range $values}}<input type="hidden" name="{{$name}}" value="{{.}}">{{end}}{{end}}{{end}}
+                <input type="hidden" name="step" value="edit">
+                <button type="submit">Edit report</button>
+            </form>
+        </section>
+    </div>
+</article>
+{{end}}
+
+{{define "contact-success-content"}}
+<article class="container container-sm"><header class="page-header"><h1 class="page-title">Report received</h1></header><p>{{.SuccessMessage}}</p></article>
+{{end}}
+
+{{define "security-report-content"}}
+<article class="container container-sm">
+    <header class="page-header"><h1 class="page-title">Security report status</h1><p class="page-lead">Private status for report {{.Report.TrackingID}}</p></header>
+    <section class="section-card" aria-labelledby="report-status">
+        <h2 id="report-status">Current status</h2>
+        <p>{{.Report.Status}}</p>
+        <p>Severity: {{.Report.Severity}}</p>
+        {{if .Report.DisclosureDate}}<p>Expected disclosure date: {{.Report.DisclosureDate}}</p>{{end}}
+        {{if .Report.ResearcherComment}}<p>{{.Report.ResearcherComment}}</p>{{end}}
+    </section>
+</article>
+{{end}}
+
+{{define "security-content"}}
+<article class="container container-md">
+    {{if ne .Page "security"}}<nav class="breadcrumb" aria-label="Breadcrumb"><a href="/server/security">← Security</a></nav>{{end}}
+    {{if eq .Page "security"}}
+    <header class="page-header"><h1 class="page-title">Security</h1><p class="page-lead">How to report a security vulnerability affecting this project.</p></header>
+    <section class="section-card" aria-labelledby="security-report">
+        <h2 id="security-report">Report a vulnerability</h2>
+        <p>Use <a href="{{.ReportURL}}">GitHub private vulnerability reporting</a>. Do not publish vulnerability details in an issue or pull request.</p>
+        {{if .SecurityEmail}}<p>Email: <a href="mailto:{{.SecurityEmail}}">{{.SecurityEmail}}</a></p>{{end}}
+        {{if .PGPKeyURL}}<p><a href="{{.PGPKeyURL}}">Download the OpenPGP encryption key</a></p>{{end}}
+        {{if .SecurityReportURL}}<p>For a deployed instance, <a href="{{.SecurityReportURL}}">submit a confidential security report</a>.</p>{{end}}
+        {{if .OtherReportURL}}<p>For terms violations, DMCA notices, or privacy requests, use the <a href="{{.OtherReportURL}}">report form</a>.</p>{{end}}
+    </section>
+    <section class="section-card" aria-labelledby="security-resources">
+        <h2 id="security-resources">Security resources</h2>
+        <p>Security contact information expires {{.SecurityExpires}}.</p>
+        <ul>
+            <li><a href="/server/security/policy">Disclosure policy</a></li>
+            <li><a href="/server/security/thanks">Acknowledgments</a></li>
+            <li><a href="/.well-known/security.txt">Machine-readable security contact information</a></li>
+        </ul>
+    </section>
+    {{else if eq .Page "security-policy"}}
+    <header class="page-header"><h1 class="page-title">Disclosure policy</h1><p class="page-lead">A coordinated process for reporting and resolving security issues in this project.</p></header>
+    {{range .DisclosurePolicy}}
+    <section class="section-card">
+        <h2>{{.Title}}</h2>
+        <p>{{.Content}}{{if .Link}} <a href="{{.Link}}">{{.Link}}</a>{{end}}</p>
+    </section>
+    {{end}}
+    {{else}}
+    <header class="page-header"><h1 class="page-title">Security acknowledgments</h1><p class="page-lead">Researchers credited for responsibly disclosed vulnerabilities.</p></header>
+    <section class="section-card" aria-labelledby="security-thanks">
+        <h2 id="security-thanks">Acknowledgments</h2>
+        {{range .ThanksEntries}}<p>{{.credit}} — {{.severity}}, disclosed {{.date}}</p>{{else}}
+        <p>No researchers have been listed.</p>
+        {{end}}
+    </section>
+    {{end}}
+</article>
+{{end}}
+
+{{define "error-content"}}
+<article class="container container-sm">
+    <header class="page-header"><h1 class="page-title">{{.ErrorStatus}} {{.ErrorMessage}}</h1><p class="page-lead">The requested page could not be served.</p></header>
+    <section class="section-card" aria-labelledby="error-next">
+        <h2 id="error-next">Continue</h2>
+        <p><a href="/">Return to the home page</a> or <a href="/server/help">open help</a>.</p>
+    </section>
+</article>
+{{end}}
+
+{{define "health-content"}}
+<article class="info-page">
+    <h1>Service health</h1>
+    <p>Status: {{.HealthStatus}}</p>
+    <section><h2>Service</h2><dl>
+        <dt>Status</dt><dd>{{.HealthStatus}}</dd>
+        <dt>Version</dt><dd>{{.Version}}</dd>
+        <dt>Go version</dt><dd>{{.GoVersion}}</dd>
+        <dt>Commit</dt><dd>{{.CommitID}}</dd>
+        <dt>Build date</dt><dd>{{.BuildDate}}</dd>
+        <dt>Uptime</dt><dd>{{.Uptime}}</dd>
+        <dt>Mode</dt><dd>{{.Mode}}</dd>
+        <dt>Timestamp</dt><dd>{{.Timestamp}}</dd>
+    </dl></section>
+    <section><h2>Features</h2><dl>
+        <dt>Tor</dt><dd>{{.TorStatus}}{{if .TorRunning}} — <a href="http://{{.TorHostname}}">{{.TorHostname}}</a>{{end}}</dd>
+        <dt>I2P</dt><dd>{{.I2PStatus}}</dd>
+        <dt>GeoIP</dt><dd>{{if .GeoIPEnabled}}enabled{{else}}disabled{{end}}</dd>
+    </dl></section>
+    <section><h2>Checks</h2><dl>
+        <dt>Database</dt><dd>{{.DatabaseStatus}}</dd>
+        <dt>Cache</dt><dd>{{.CacheStatus}}</dd>
+        <dt>Disk</dt><dd>{{.DiskStatus}}</dd>
+        <dt>Scheduler</dt><dd>{{.SchedulerStatus}}</dd>
+    </dl></section>
+    <section><h2>Statistics</h2><dl>
+        <dt>Total requests</dt><dd>{{.RequestsTotal}}</dd>
+        <dt>Requests in last 24 hours</dt><dd>{{.Requests24h}}</dd>
+        <dt>Active connections</dt><dd>{{.ActiveConnections}}</dd>
+        <dt>Quotes loaded</dt><dd>{{.TotalQuotes}}</dd>
+        <dt>Service started</dt><dd>{{.StartedAt}}</dd>
+    </dl></section>
+    <p><a href="/api/v1/server/healthz">JSON health API</a></p>
+</article>
+{{end}}
+
+{{define "quotes-content"}}
+<article class="info-page">
+    <h1>{{t .Lang "quotes_page.title"}}</h1>
+    <form method="get" action="/quotes">
+        <label for="quote-query">{{t .Lang "quotes_page.quote_text"}} <input id="quote-query" name="q" maxlength="256" value="{{.Query}}"></label>
+        <label for="quote-anime">{{t .Lang "quotes_page.anime"}} <input id="quote-anime" name="anime" maxlength="256" value="{{.Anime}}"></label>
+        <label for="quote-character">{{t .Lang "quotes_page.character"}} <input id="quote-character" name="character" maxlength="256" value="{{.Character}}"></label>
+        <button type="submit">{{t .Lang "quotes_page.search"}}</button>
+    </form>
+    <p>{{tf .Lang "quotes_page.matching" "count" (len .Quotes)}}</p>
+    {{range .Quotes}}
+    <article class="card" id="quote-{{.ID}}">
+        <blockquote>{{.Quote}}</blockquote>
+        <p>{{.Character}} · {{.Anime}}</p>
+    </article>
+    {{else}}
+    <p>{{t .Lang "quotes_page.no_matches"}}</p>
+    {{end}}
+</article>
+{{end}}
+
+{{define "swagger-content"}}
+<article class="info-page">
+    <h1>REST API documentation</h1>
+    <p>Machine-readable <a href="/api/v1/server/swagger">OpenAPI 3.1 specification</a>.</p>
+    <h2>Get a random quote</h2>
+    <pre><code>GET /api/v1/random</code></pre>
+    <h2>Search quotes</h2>
+    <p>Optional case-insensitive <code>q</code>, <code>anime</code>, and <code>character</code> filters; values are limited to 256 characters.</p>
+    <pre><code>GET /api/v1/quotes?q=believe&amp;anime=naruto&amp;character=naruto</code></pre>
+    <h2>Health and statistics</h2>
+    <ul><li><code>GET /api/v1/server/healthz</code></li><li><code>GET /api/v1/stats</code></li></ul>
+    <h2>GraphQL</h2>
+    <p><a href="/server/docs/graphql">Open the GraphQL explorer</a>. The GraphQL API is read-only.</p>
+</article>
+{{end}}
+
+{{define "graphql-content"}}
+<article class="info-page">
+    <h1>GraphQL explorer</h1>
+    <form id="query-form" data-query-form method="get" action="/api/graphql">
+        <label for="query">GraphQL query</label>
+        <textarea id="query" name="query" rows="8" cols="80">{ randomQuote { anime character quote } }</textarea>
+        <button type="submit">Run query</button>
+    </form>
+    <pre id="result" aria-live="polite"></pre>
+    <p>POST JSON to <code>/api/v1/server/graphql</code> or <code>/api/graphql</code>.</p>
+</article>
+{{end}}
+
+{{define "preferences-content"}}
+<article class="container container-md">
+    <header class="page-header">
+        <h1 class="page-title">{{t .Lang "preferences.page_title"}}</h1>
+        <p class="page-lead">{{t .Lang "preferences.page_description"}}</p>
+    </header>
+    <form method="post" action="/server/preferences">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <input type="hidden" name="consent_form" value="1">
+        <fieldset>
+            <legend>{{t .Lang "preferences.ui.appearance"}}</legend>
+            <label><input type="radio" name="theme" value="dark" {{if eq .Theme "dark"}}checked{{end}}> {{t .Lang "preferences.ui.dark"}}</label>
+            <label><input type="radio" name="theme" value="light" {{if eq .Theme "light"}}checked{{end}}> {{t .Lang "preferences.ui.light"}}</label>
+            <label><input type="radio" name="theme" value="auto" {{if eq .Theme "auto"}}checked{{end}}> {{t .Lang "preferences.ui.automatic"}}</label>
+        </fieldset>
+        <fieldset id="language">
+            <legend>{{t .Lang "preferences.ui.language"}}</legend>
+            <label for="preference-language">{{t .Lang "preferences.ui.language"}}</label>
+            <select id="preference-language" name="lang">
+                <option value="automatic" {{if eq .LanguageSelection "automatic"}}selected{{end}}>{{t .Lang "preferences.ui.automatic"}} ({{.AutomaticLanguage}})</option>
+                {{range .Languages}}<option value="{{.Code}}" {{if eq $.LanguageSelection .Code}}selected{{end}} lang="{{.Code}}">{{.Name}}</option>{{end}}
+            </select>
+        </fieldset>
+        <fieldset>
+            <legend>{{t .Lang "preferences.ui.privacy"}}</legend>
+            <p>{{t .Lang "preferences.ui.essential_notice"}}</p>
+            <label><input type="checkbox" name="consent_preferences" {{if .ConsentPreferences}}checked{{end}}> {{t .Lang "preferences.ui.preference_cookies"}}</label>
+            <label><input type="checkbox" name="consent_analytics" {{if .ConsentAnalytics}}checked{{end}}> {{t .Lang "preferences.ui.analytics_cookies"}}</label>
+            {{if .DataSold}}
+            <label><input type="checkbox" name="ccpa_opt_out" {{if .CCPAOptedOut}}checked{{end}}> {{t .Lang "preferences.ui.ccpa_opt_out"}}</label>
+            {{end}}
+        </fieldset>
+        <div class="form-actions">
+            <a class="btn" href="{{.CancelURL}}">{{t .Lang "preferences.ui.cancel"}}</a>
+            <button class="btn" type="button" popovertarget="preferences-reset">{{t .Lang "preferences.ui.reset"}}</button>
+            <button class="btn btn-primary" type="submit">{{t .Lang "preferences.ui.save"}}</button>
+        </div>
+        <div id="preferences-reset" class="preferences-reset-popover" popover>
+            <h2>{{t .Lang "preferences.ui.forget_title"}}</h2>
+            <p>{{t .Lang "preferences.ui.forget_description"}}</p>
+            <button class="btn" type="button" popovertarget="preferences-reset" popovertargetaction="hide">{{t .Lang "preferences.ui.keep"}}</button>
+            <button class="btn btn-danger" type="submit" name="action" value="reset">{{t .Lang "preferences.ui.erase_all"}}</button>
+        </div>
+    </form>
+    <section class="section-card" aria-labelledby="preferences-more">
+        <h2 id="preferences-more">{{t .Lang "preferences.ui.more_preferences"}}</h2>
+        <ul class="hub-list">
+            {{range .Pages}}<li><a class="hub-link" href="{{.Path}}"><span class="hub-title">{{.Title}}</span><span class="hub-desc">{{.Description}}</span></a></li>{{end}}
+        </ul>
+    </section>
+</article>
+{{end}}
+
+{{define "preferences-sync-content"}}
+<article class="container container-md">
+    <header class="page-header">
+        <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/server/preferences">{{t .Lang "preferences.ui.back_preferences"}}</a></nav>
+        <h1 class="page-title">{{t .Lang "preferences.sync.title"}}</h1>
+        <p class="page-lead">{{t .Lang "preferences.sync.description"}}</p>
+    </header>
+    <section class="section-card" aria-labelledby="preferences-sync-export">
+        <h2 id="preferences-sync-export">{{t .Lang "preferences.ui.export"}}</h2>
+        <p>{{t .Lang "preferences.ui.export_description"}}</p>
+        <p><strong>{{t .Lang "preferences.ui.share_url"}}</strong><br><code id="preference-sync-url" class="selectable-value">{{.PreferenceURL}}</code> <button type="button" data-action="copy-text" data-copy-target="preference-sync-url">{{t .Lang "preferences.ui.copy_url"}}</button></p>
+        <p><strong>{{t .Lang "preferences.ui.share_code"}}</strong><br><code id="preference-sync-code" class="selectable-value">{{.PreferenceCode}}</code> <button type="button" data-action="copy-text" data-copy-target="preference-sync-code">{{t .Lang "preferences.ui.copy_code"}}</button></p>
+    </section>
+    <section class="section-card" aria-labelledby="preferences-sync-import-heading">
+        <h2 id="preferences-sync-import-heading">{{t .Lang "preferences.ui.import"}}</h2>
+        <form method="post" action="/server/preferences/sync">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <input type="hidden" name="redirect" value="/server/preferences/sync">
+            <label for="preference-sync-import">{{t .Lang "preferences.ui.paste_share"}}</label>
+            <input id="preference-sync-import" class="form-input" type="text" name="code" maxlength="2048">
+            <button type="submit">{{t .Lang "preferences.ui.import_button"}}</button>
+        </form>
+    </section>
+</article>
+{{end}}

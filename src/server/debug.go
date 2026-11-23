@@ -115,7 +115,7 @@ func (s *Server) handleDebugScheduler(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, http.StatusInternalServerError, "Unable to read scheduler status")
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	tasks := make([]map[string]any, 0)
 	for rows.Next() {
 		var id, name, schedule string

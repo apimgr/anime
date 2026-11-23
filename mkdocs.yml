@@ -26,11 +26,14 @@ theme:
   features:
     - navigation.instant
     - navigation.tracking
+    - navigation.tabs
     - navigation.sections
+    - navigation.expand
     - navigation.top
     - search.suggest
     - search.highlight
     - content.code.copy
+    - content.action.edit
   font:
     text: Roboto
     code: Roboto Mono
@@ -66,5 +69,6 @@ nav:
     - Security: security.md
     - Integrations: integrations.md
   - Development: development.md
+  - Translating: translating.md
 extra:
   generator: false

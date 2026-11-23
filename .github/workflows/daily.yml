@@ -21,10 +21,29 @@ env:
   PROJECT_NAME: anime
 
 jobs:
+  preflight:
+    runs-on: ubuntu-26.04
+    container:
+      image: casjaysdev/go@sha256:0db19a251249c5aca053d4c25a7b832cdc66422bdb10067a8b072f15a785330a
+      options: "--user 0:0"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: Run quality and security gates
+        run: |
+          mkdir -p /tmp/apimgr
+          COVDIR=$(mktemp -d /tmp/apimgr/anime-XXXXXX)
+          trap 'rm -rf "$COVDIR"' EXIT
+          go vet ./...
+          GOTOOLCHAIN=go1.26.4 staticcheck ./...
+          govulncheck ./...
+          go test -timeout 30m -coverprofile="$COVDIR/coverage.out" ./...
+          coverage=$(go tool cover -func="$COVDIR/coverage.out" | awk '/^total:/ {gsub(/%/, "", $3); print int($3)}')
+          if [ "$coverage" -lt 60 ]; then echo "::error::coverage $coverage% < threshold 60%"; exit 1; fi
+
   # Compute VERSION once — matrix legs must never each compute their own value.
   # Daily identity is the commit being built, not release.txt or a timestamp.
   version:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       version: ${{ steps.set.outputs.version }}
     steps:
@@ -35,10 +54,10 @@ jobs:
           echo "version=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
 
   build:
-    needs: [version]
-    runs-on: ubuntu-latest
+    needs: [version, preflight]
+    runs-on: ubuntu-26.04
     container:
-      image: casjaysdev/go:latest
+      image: casjaysdev/go@sha256:0db19a251249c5aca053d4c25a7b832cdc66422bdb10067a8b072f15a785330a
       options: "--user 0:0"
     strategy:
       matrix:
@@ -94,7 +113,7 @@ jobs:
 
   release:
     needs: [version, build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
       # GitHub artifact attestations (SBOM, provenance)
@@ -121,7 +140,7 @@ jobs:
 
       # SBOM tooling lives in the build image, never installed on the runner
       - name: Generate SBOM (CycloneDX)
-        run: docker run --rm -v "$PWD":/app -w /app -e GOFLAGS=-buildvcs=false casjaysdev/go:latest cyclonedx-gomod mod -json -output "binaries/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-sbom.cdx.json"
+        run: docker run --rm -v "$PWD":/app -w /app -e GOFLAGS=-buildvcs=false casjaysdev/go@sha256:0db19a251249c5aca053d4c25a7b832cdc66422bdb10067a8b072f15a785330a cyclonedx-gomod mod -json -output "binaries/${{ env.PROJECT_NAME }}-${{ env.VERSION }}-sbom.cdx.json"
 
       - name: Generate checksums
         run: |

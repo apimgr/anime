@@ -46,7 +46,7 @@ func (s *Server) handleAutodiscover(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	_, versions, err := s.getCLIUpdate(ctx)
 	if err != nil {
-		http.Error(w, "client update metadata is temporarily unavailable", http.StatusServiceUnavailable)
+		writeProblem(w, http.StatusServiceUnavailable, "client update metadata is temporarily unavailable")
 		return
 	}
 	response := autodiscoverResponse{CLIVersions: versions}
@@ -65,28 +65,28 @@ func (s *Server) handleAutodiscover(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCLIBinary(w http.ResponseWriter, r *http.Request) {
 	assetName := strings.TrimPrefix(r.URL.Path, "/cli/binaries/")
 	if assetName == "" || strings.Contains(assetName, "/") {
-		http.NotFound(w, r)
+		s.renderStatusError(w, r, http.StatusNotFound)
 		return
 	}
 	goos, goarch, ok := parseCLIBinaryName(assetName)
 	if !ok {
-		http.NotFound(w, r)
+		s.renderStatusError(w, r, http.StatusNotFound)
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
 	release, _, err := s.getCLIUpdate(ctx)
 	if err != nil {
-		http.Error(w, "client binary is temporarily unavailable", http.StatusServiceUnavailable)
+		s.renderStatusError(w, r, http.StatusServiceUnavailable)
 		return
 	}
 	if release == nil || !hasReleaseAsset(release, cliBinaryName(goos, goarch)) {
-		http.NotFound(w, r)
+		s.renderStatusError(w, r, http.StatusNotFound)
 		return
 	}
 	assetURL, err := s.updateClient.AssetURL(release, assetName)
 	if err != nil {
-		http.Error(w, "client binary is temporarily unavailable", http.StatusServiceUnavailable)
+		s.renderStatusError(w, r, http.StatusServiceUnavailable)
 		return
 	}
 	w.Header().Set("Cache-Control", "public, max-age=300")

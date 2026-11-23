@@ -1,12 +1,21 @@
 package server
 
 import (
+	"context"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"runtime"
+	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/apimgr/anime/src/anime"
@@ -27,16 +36,24 @@ var (
 
 // Server represents the HTTP server
 type Server struct {
-	router       *mux.Router
-	animeService *anime.Service
-	cfg          *config.Config
-	port         string
-	address      string
-	startTime    time.Time
-	updateClient *updater.Client
-	cliUpdates   *cliUpdateCache
-	debugEnabled bool
-	database     *database.Database
+	router             *mux.Router
+	animeService       *anime.Service
+	cfg                *config.Config
+	port               string
+	address            string
+	startTime          time.Time
+	updateClient       *updater.Client
+	cliUpdates         *cliUpdateCache
+	debugEnabled       bool
+	database           *database.Database
+	requestStats       *requestStats
+	activeConns        atomic.Int64
+	csrfKey            []byte
+	installationSecret []byte
+	contactMu          sync.Mutex
+	contactNonces      map[string]time.Time
+	smtpProbed         bool
+	smtpAvailable      bool
 }
 
 // NewServer creates a new HTTP server
@@ -46,20 +63,45 @@ func NewServer(animeService *anime.Service, cfg *config.Config, port, address st
 		return nil, fmt.Errorf("failed to initialize templates: %w", err)
 	}
 
+	csrfKey := make([]byte, 32)
+	installationSecret := make([]byte, 32)
+	if _, err := rand.Read(csrfKey); err != nil {
+		return nil, fmt.Errorf("failed to initialize CSRF signing key: %w", err)
+	}
+	if _, err := rand.Read(installationSecret); err != nil {
+		return nil, fmt.Errorf("failed to initialize installation secret: %w", err)
+	}
 	s := &Server{
-		router:       mux.NewRouter(),
-		animeService: animeService,
-		cfg:          cfg,
-		port:         port,
-		address:      address,
-		startTime:    time.Now(),
-		updateClient: updater.NewClient(),
-		cliUpdates:   &cliUpdateCache{},
-		debugEnabled: mode.ShouldShowDebugEndpoints(),
+		router:        mux.NewRouter(),
+		animeService:  animeService,
+		cfg:           cfg,
+		port:          port,
+		address:       address,
+		startTime:     time.Now(),
+		updateClient:  updater.NewClient(),
+		cliUpdates:    &cliUpdateCache{},
+		debugEnabled:  mode.ShouldShowDebugEndpoints(),
+		requestStats:  &requestStats{},
+		csrfKey:       csrfKey,
+		contactNonces: make(map[string]time.Time),
 	}
 	if len(databases) > 0 {
 		s.database = databases[0]
+		if s.database != nil && s.database.SQL != nil {
+			secret, err := database.AppSecret(context.Background(), s.database.SQL, "installation_secret")
+			if err != nil {
+				return nil, fmt.Errorf("load installation secret: %w", err)
+			}
+			installationSecret = secret
+			csrfSecret, err := database.AppSecret(context.Background(), s.database.SQL, "csrf_token_secret")
+			if err != nil {
+				return nil, fmt.Errorf("load CSRF token secret: %w", err)
+			}
+			csrfKey = csrfSecret
+		}
 	}
+	s.installationSecret = installationSecret
+	s.csrfKey = csrfKey
 
 	s.setupRoutes()
 	return s, nil
@@ -69,22 +111,32 @@ func NewServer(animeService *anime.Service, cfg *config.Config, port, address st
 func (s *Server) setupRoutes() {
 	// Apply global middleware (in order of execution)
 	// Convert explicit plain-text Accept requests after route handlers produce their normal response.
+	s.router.Use(urlNormalizeMiddleware)
+	s.router.Use(s.requestStatsMiddleware)
 	s.router.Use(contentNegotiationMiddleware)
-	s.router.Use(recoverMiddleware)           // Panic recovery
+	s.router.Use(s.seoMiddleware)
+	s.router.Use(s.recoverRequests)
 	s.router.Use(s.securityHeadersMiddleware) // Security headers
 	s.router.Use(s.corsMiddleware)            // CORS
 	s.router.Use(requestSizeLimitMiddleware)  // Request size limits
-	s.router.Use(throttleMiddleware(maxConcurrentRequests))
-	s.router.Use(globalRateLimitMiddleware()) // Global rate limiting
-	s.router.Use(loggingMiddleware)           // Request logging
+	s.router.Use(throttleMiddleware(maxConcurrentRequests, s.renderStatusError))
+	s.router.Use(globalRateLimitMiddleware(s.rateLimitError))
+	s.router.Use(loggingMiddleware) // Request logging
 
 	// Static files (CSS, JS, images)
+	s.router.PathPrefix("/locales/").HandlerFunc(s.handleLocaleJSON).Methods("GET")
 	s.router.PathPrefix("/static/").Handler(http.StripPrefix("/", s.serveStatic()))
 
 	// Special files (PWA, robots, security)
 	s.router.HandleFunc("/robots.txt", s.handleRobotsTxt).Methods("GET")
-	s.router.HandleFunc("/security.txt", s.handleSecurityTxt).Methods("GET")
-	s.router.HandleFunc("/.well-known/security.txt", s.handleSecurityTxt).Methods("GET")
+	s.router.HandleFunc("/.well-known/security.txt", s.handleSecurityTxt).Methods("GET", "HEAD")
+	s.router.HandleFunc("/sitemap.xml", s.handleSitemap).Methods("GET", "HEAD")
+	s.router.PathPrefix("/sitemap-").HandlerFunc(s.handleSitemapPart).Methods("GET", "HEAD")
+	s.router.HandleFunc("/feed.xml", s.handleAtomFeed).Methods("GET", "HEAD")
+	s.router.HandleFunc("/rss.xml", s.handleRSSFeed).Methods("GET", "HEAD")
+	s.router.HandleFunc("/.well-known/llms.txt", s.handleLLMSTxt).Methods("GET", "HEAD")
+	s.router.HandleFunc("/llms.txt", s.handleLLMSTxt).Methods("GET", "HEAD")
+	s.router.HandleFunc("/.well-known/pgp-key.asc", s.handlePGPKey).Methods("GET", "HEAD")
 	s.router.HandleFunc("/manifest.json", s.handleManifest).Methods("GET")
 	s.router.HandleFunc("/sw.js", s.handleServiceWorker).Methods("GET")
 
@@ -93,27 +145,60 @@ func (s *Server) setupRoutes() {
 	s.router.HandleFunc("/quotes", s.handleQuotesPage).Methods("GET")
 	s.router.HandleFunc("/server/about", s.handleInfoPage).Methods("GET")
 	s.router.HandleFunc("/server/help", s.handleInfoPage).Methods("GET")
+	s.router.HandleFunc("/server/help/mcp", s.handleMCPHelpPage).Methods("GET")
 	s.router.HandleFunc("/server/healthz", s.handleHealthz).Methods("GET")
+	s.router.HandleFunc("/server/preferences", s.handlePreferences).Methods("GET", "POST")
+	s.router.HandleFunc("/server/preferences/tokens", s.handleTokensPage).Methods("GET", "POST")
+	s.router.PathPrefix("/server/preferences/token/").HandlerFunc(s.handleTokenWebAction).Methods("POST")
+	s.router.PathPrefix("/server/preferences/tokens/").HandlerFunc(s.handleTokenWebAction).Methods("POST")
+	s.router.HandleFunc("/server/consent", s.handleConsent).Methods("POST")
+	s.router.HandleFunc("/server/preferences/sync", s.handlePreferencesSync).Methods("GET", "POST")
+	s.router.HandleFunc("/server/preferences/sync/import", s.importPreferences).Methods("GET")
+	s.router.HandleFunc("/server/security", s.handleSecurityPage).Methods("GET")
+	s.router.HandleFunc("/server/security/policy", s.handleSecurityPage).Methods("GET")
+	s.router.HandleFunc("/server/security/thanks", s.handleSecurityPage).Methods("GET")
+	s.router.HandleFunc("/server/security/report/{tracking_id}", s.handleSecurityReportPage).Methods("GET")
+	s.router.HandleFunc("/server/contact", s.handleContactPage).Methods("GET", "POST")
 	s.router.HandleFunc("/server/privacy", s.handleInfoPage).Methods("GET")
 	s.router.HandleFunc("/server/terms", s.handleInfoPage).Methods("GET")
+	s.router.HandleFunc("/server/dpo", s.handleDPOPage).Methods("GET")
+	s.router.HandleFunc("/server", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/server/about", http.StatusMovedPermanently)
+	}).Methods("GET")
 	s.router.HandleFunc("/server/docs/swagger", s.handleSwaggerUI).Methods("GET")
 	s.router.HandleFunc("/server/docs/graphql", s.handleGraphQLUI).Methods("GET")
-	s.router.Handle("/graphql", apiRateLimitMiddleware()(http.HandlerFunc(s.handleGraphQL))).Methods("GET", "POST")
+	s.router.Handle("/graphql", apiRateLimitMiddleware(s.rateLimitError)(http.HandlerFunc(s.handleGraphQL))).Methods("GET", "POST")
 
 	// API roots and aliases are read-only and use the same API rate limit as versioned routes.
 	s.router.HandleFunc("/api/autodiscover", s.handleAutodiscover).Methods("GET")
 	s.router.PathPrefix("/cli/binaries/").HandlerFunc(s.handleCLIBinary).Methods("GET")
-	s.router.Handle("/api/v1", apiRateLimitMiddleware()(http.HandlerFunc(s.handleAPIRoot))).Methods("GET")
-	s.router.Handle("/api", apiRateLimitMiddleware()(http.HandlerFunc(s.handleAPIRoot))).Methods("GET")
+	s.router.Handle("/api/v1", apiRateLimitMiddleware(s.rateLimitError)(http.HandlerFunc(s.handleAPIRoot))).Methods("GET")
+	s.router.Handle("/api", apiRateLimitMiddleware(s.rateLimitError)(http.HandlerFunc(s.handleAPIRoot))).Methods("GET")
 
 	// API v1 routes (public read-only API) with API-specific rate limiting.
 	api := s.router.PathPrefix("/api/v1").Subrouter()
-	api.Use(apiRateLimitMiddleware())
+	api.Use(apiRateLimitMiddleware(s.rateLimitError))
 	api.HandleFunc("/random", s.handleRandomQuote).Methods("GET")
 	api.HandleFunc("/quotes", s.handleAllQuotes).Methods("GET")
 	api.HandleFunc("/server/healthz", s.handleHealth).Methods("GET")
+	api.HandleFunc("/server/preferences", s.handlePreferencesAPI).Methods("GET", "POST")
+	api.HandleFunc("/server/preferences/tokens", s.handleTokensAPI)
+	api.PathPrefix("/server/preferences/tokens/").HandlerFunc(s.handleTokensAPI)
+	api.HandleFunc("/server/preferences/sync", s.handlePreferencesSyncAPI).Methods("GET")
+	api.HandleFunc("/server/preferences/sync/import", s.importPreferencesAPI).Methods("GET")
+	api.HandleFunc("/server/about", s.handleInfoJSON).Methods("GET")
+	api.HandleFunc("/server/help", s.handleInfoJSON).Methods("GET")
+	api.HandleFunc("/server/help/mcp", s.handleMCPHelpJSON).Methods("GET")
+	api.HandleFunc("/server/privacy", s.handleInfoJSON).Methods("GET")
+	api.HandleFunc("/server/terms", s.handleInfoJSON).Methods("GET")
+	api.HandleFunc("/server/dpo", s.handleDPOJSON).Methods("GET")
+	api.HandleFunc("/server/security", s.handleSecurityJSON).Methods("GET")
+	api.HandleFunc("/server/security/policy", s.handleSecurityJSON).Methods("GET")
+	api.HandleFunc("/server/security/thanks", s.handleSecurityJSON).Methods("GET")
+	api.HandleFunc("/server/contact", s.handleContactAPI).Methods("GET", "POST")
 	api.HandleFunc("/server/swagger", s.handleOpenAPI).Methods("GET")
 	api.HandleFunc("/server/graphql", s.handleGraphQL).Methods("GET", "POST")
+	api.HandleFunc("/server/mcp", s.handleMCP)
 	api.HandleFunc("/stats", s.handleStats).Methods("GET")
 	if s.debugEnabled {
 		debugHandler := s.operatorAuthMiddleware(s.debugMux())
@@ -127,9 +212,13 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/quotes.txt", s.handleAllQuotesText).Methods("GET")
 	api.HandleFunc("/server/healthz.txt", s.handleHealthText).Methods("GET")
 	api.HandleFunc("/stats.txt", s.handleStatsText).Methods("GET")
-	s.router.Handle("/api/healthz", apiRateLimitMiddleware()(http.HandlerFunc(s.handleHealth))).Methods("GET")
-	s.router.Handle("/api/swagger", apiRateLimitMiddleware()(http.HandlerFunc(s.handleOpenAPI))).Methods("GET")
-	s.router.Handle("/api/graphql", apiRateLimitMiddleware()(http.HandlerFunc(s.handleGraphQL))).Methods("GET", "POST")
+	s.router.Handle("/api/healthz", apiRateLimitMiddleware(s.rateLimitError)(http.HandlerFunc(s.handleHealth))).Methods("GET")
+	s.router.Handle("/api/swagger", apiRateLimitMiddleware(s.rateLimitError)(http.HandlerFunc(s.handleOpenAPI))).Methods("GET")
+	s.router.Handle("/api/graphql", apiRateLimitMiddleware(s.rateLimitError)(http.HandlerFunc(s.handleGraphQL))).Methods("GET", "POST")
+	s.router.Handle("/api/mcp", apiRateLimitMiddleware(s.rateLimitError)(http.HandlerFunc(s.handleMCP)))
+	s.router.Handle("/mcp", apiRateLimitMiddleware(s.rateLimitError)(http.HandlerFunc(s.handleMCP)))
+	s.router.NotFoundHandler = http.HandlerFunc(s.notFound)
+	s.router.MethodNotAllowedHandler = http.HandlerFunc(s.methodNotAllowed)
 }
 
 // getServerURL returns the server URL for display
@@ -149,6 +238,10 @@ func (s *Server) getServerURL(r *http.Request) string {
 
 // Start starts the HTTP server
 func (s *Server) Start() error {
+	s.initializeSMTP()
+	cleanupStop := make(chan struct{})
+	go s.securityCleanupLoop(cleanupStop)
+	defer close(cleanupStop)
 	// Build listen address
 	var addr string
 	if s.address == "::" {
@@ -208,9 +301,19 @@ func (s *Server) Start() error {
 		WriteTimeout:   10 * time.Second,
 		IdleTimeout:    120 * time.Second,
 		MaxHeaderBytes: maxHeaderSize,
+		ConnState:      s.trackConnection,
 	}
 
 	return server.ListenAndServe()
+}
+
+func (s *Server) trackConnection(_ net.Conn, state http.ConnState) {
+	switch state {
+	case http.StateNew:
+		s.activeConns.Add(1)
+	case http.StateClosed, http.StateHijacked:
+		s.activeConns.Add(-1)
+	}
 }
 
 // handleRobotsTxt generates robots.txt from config
@@ -221,31 +324,59 @@ func (s *Server) handleRobotsTxt(w http.ResponseWriter, r *http.Request) {
 	sb.WriteString("User-agent: *\n")
 
 	for _, path := range s.cfg.WebRobots.Allow {
-		sb.WriteString(fmt.Sprintf("Allow: %s\n", path))
+		sb.WriteString("Allow: " + path + "\n")
 	}
 	for _, path := range s.cfg.WebRobots.Deny {
-		sb.WriteString(fmt.Sprintf("Disallow: %s\n", path))
+		sb.WriteString("Disallow: " + path + "\n")
 	}
+	sb.WriteString("Sitemap: " + BuildURL(r, "/sitemap.xml") + "\n")
 
-	w.Write([]byte(sb.String()))
+	_, _ = w.Write([]byte(sb.String()))
 }
 
 // handleSecurityTxt generates security.txt
 func (s *Server) handleSecurityTxt(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-
-	admin := s.cfg.WebSecurity.Admin
-	if admin == "" {
-		admin = "security@apimgr.us"
+	origin := strings.TrimSuffix(BuildURL(r, "/"), "/")
+	var content strings.Builder
+	fmt.Fprintf(&content, "Contact: %s\n", s.securityReportURL())
+	if s.cfg.Server.Pages.Contact.Enabled {
+		fmt.Fprintf(&content, "Contact: %s/server/contact?security_id=%s\n", origin, s.securityID(time.Now()))
 	}
+	securityEmail := s.securityContactEmail(r)
+	if securityEmail != "" {
+		fmt.Fprintf(&content, "Contact: mailto:%s\n", securityEmail)
+	}
+	if s.securityKeyFingerprint() != "" {
+		fmt.Fprintf(&content, "Encryption: %s/.well-known/pgp-key.asc\n", origin)
+	}
+	fmt.Fprintf(&content, "Policy: %s/server/security\nExpires: %s\nPreferred-Languages: en, es, fr, de, it, ar\nCanonical: %s/.well-known/security.txt\n", origin, time.Now().UTC().AddDate(1, 0, 0).Format(time.RFC3339), origin)
 
-	content := fmt.Sprintf(`Contact: mailto:%s
-Expires: 2026-12-31T23:59:59.000Z
-Preferred-Languages: en
-Canonical: https://anime.apimgr.us/.well-known/security.txt
-`, admin)
+	body := []byte(content.String())
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	if r.Method == http.MethodGet {
+		_, _ = w.Write(body)
+	}
+}
 
-	w.Write([]byte(content))
+func (s *Server) securityID(now time.Time) string {
+	window := now.Unix() / 172800
+	mac := hmac.New(sha256.New, s.installationSecret)
+	_, _ = fmt.Fprintf(mac, "%d", window)
+	return fmt.Sprintf("%x", mac.Sum(nil))[:16]
+}
+
+func (s *Server) validSecurityID(value string, now time.Time) bool {
+	if len(value) != 16 {
+		return false
+	}
+	for offset := int64(0); offset <= 1; offset++ {
+		candidate := s.securityID(time.Unix(((now.Unix()/172800)-offset)*172800, 0))
+		if hmac.Equal([]byte(value), []byte(candidate)) {
+			return true
+		}
+	}
+	return false
 }
 
 // handleManifest returns the PWA manifest
@@ -280,7 +411,7 @@ func (s *Server) handleManifest(w http.ResponseWriter, r *http.Request) {
   ]
 }`, bgColor)
 
-	w.Write([]byte(manifest))
+	_, _ = w.Write([]byte(manifest))
 }
 
 // handleServiceWorker returns a basic service worker
@@ -318,16 +449,36 @@ self.addEventListener('fetch', function(event) {
   );
 });
 `
-	w.Write([]byte(sw))
+	_, _ = w.Write([]byte(sw))
 }
 
 // handleHealthz returns a simple health check response
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	_, _ = fmt.Fprintf(w, "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><title>Anime Quotes health</title><main><p><a href=\"/\">Home</a></p><h1>Service health</h1><p>Status: healthy</p><p>Quotes loaded: %d</p><p><a href=\"/api/v1/server/healthz\">JSON health API</a></p></main></html>", s.animeService.GetTotalQuotes())
+	status, httpStatus := "unhealthy", http.StatusServiceUnavailable
+	databaseStatus := s.checkDatabase(r.Context())
+	if databaseStatus == "ok" {
+		status, httpStatus = "healthy", http.StatusOK
+	}
+	torEnabled, torRunning, torStatus, torHostname := torHealth()
+	requestsTotal, requests24h := int64(0), int64(0)
+	if s.requestStats != nil {
+		requestsTotal, requests24h = s.requestStats.snapshot(time.Now())
+	}
+	data := map[string]interface{}{
+		"Title": "Service health", "Description": "Current health status for the Anime Quotes service.",
+		"ContentTemplate": "health-content", "Page": "healthz", "Version": Version,
+		"TotalQuotes": s.animeService.GetTotalQuotes(), "StartedAt": s.startTime.UTC().Format(time.RFC3339), "HealthStatus": status,
+		"GoVersion": runtime.Version(), "CommitID": CommitID, "BuildDate": BuildDate, "Uptime": time.Since(s.startTime).String(),
+		"Mode": mode.GetCurrentAppMode(), "Timestamp": time.Now().UTC().Format(time.RFC3339), "DatabaseStatus": databaseStatus,
+		"TorEnabled": torEnabled, "TorRunning": torRunning, "TorStatus": torStatus, "TorHostname": torHostname,
+		"I2PStatus": "disabled", "GeoIPEnabled": false, "CacheStatus": "ok", "DiskStatus": "ok", "SchedulerStatus": "ok",
+		"RequestsTotal": requestsTotal, "Requests24h": requests24h, "ActiveConnections": s.activeConns.Load(),
+	}
+	if err := s.renderPageWithStatus(w, r, data, httpStatus); err != nil {
+		log.Printf("Error rendering health page: %v", err)
+	}
 }
 
 func (s *Server) handleAPIRoot(w http.ResponseWriter, r *http.Request) {
-	respondJSON(w, http.StatusOK, map[string]interface{}{"name": "anime", "version": Version, "routes": []string{"/api/v1/random", "/api/v1/quotes", "/api/v1/server/healthz", "/api/v1/server/swagger", "/api/v1/server/graphql"}})
+	respondJSON(w, http.StatusOK, map[string]interface{}{"name": "anime", "version": Version, "routes": apiRouteIndex()})
 }

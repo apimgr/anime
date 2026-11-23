@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"sync"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -39,7 +39,9 @@ func NewService(jsonData []byte) (*Service, error) {
 // GetRandomQuote returns a random quote
 func (s *Service) GetRandomQuote() interface{} {
 	quote, ok := s.GetRandomQuoteRecord()
-	if !ok { return map[string]string{"error": "no quotes available"} }
+	if !ok {
+		return map[string]string{"error": "no quotes available"}
+	}
 	return map[string]interface{}{"anime": quote.Anime, "character": quote.Character, "quote": quote.Quote}
 }
 
@@ -47,7 +49,9 @@ func (s *Service) GetRandomQuote() interface{} {
 func (s *Service) GetRandomQuoteRecord() (Quote, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if len(s.quotes) == 0 { return Quote{}, false }
+	if len(s.quotes) == 0 {
+		return Quote{}, false
+	}
 	return s.quotes[s.rng.Intn(len(s.quotes))], true
 }
 
@@ -73,7 +77,6 @@ func (s *Service) GetTotalQuotes() int {
 	defer s.mu.RUnlock()
 	return len(s.quotes)
 }
-
 
 // SearchQuotes returns quotes matching the supplied case-insensitive filters.
 func (s *Service) SearchQuotes(query, animeName, character string) []Quote {

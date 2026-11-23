@@ -54,15 +54,14 @@ func TestHandleHealth(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	data, ok := body["data"].(map[string]interface{})
-	if !ok {
-		t.Fatalf("expected wrapped data, got %#v", body)
+	if body["status"] != "healthy" {
+		t.Errorf("expected status healthy, got %v", body["status"])
 	}
-	if data["status"] != "healthy" {
-		t.Errorf("expected status healthy, got %v", data["status"])
+	if _, wrapped := body["data"]; wrapped {
+		t.Fatalf("health response must be bare JSON, got %#v", body)
 	}
-	if data["totalQuotes"].(float64) != 1 {
-		t.Errorf("expected totalQuotes 1, got %v", data["totalQuotes"])
+	if body["project"].(map[string]interface{})["name"] != "Anime Quotes API" {
+		t.Errorf("expected project identification, got %#v", body["project"])
 	}
 }
 
@@ -127,7 +126,7 @@ func TestHandleHealthText(t *testing.T) {
 	s.handleHealthText(rec, req)
 
 	body := rec.Body.String()
-	if !strings.Contains(body, "Status: healthy") {
+	if !strings.Contains(body, "status: healthy") {
 		t.Errorf("expected status line, got %q", body)
 	}
 }
