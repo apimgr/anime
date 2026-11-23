@@ -1,42 +1,7 @@
 /**
  * Anime Quotes API - Main JavaScript
- * Vanilla JavaScript utilities for theme toggle, toast notifications, modals, and API helpers
+ * Vanilla JavaScript enhancements for toasts, modals, and API helpers
  */
-
-// ============================================
-// Theme Management
-// ============================================
-
-/**
- * Initialize theme from localStorage or default to dark
- */
-function initTheme() {
-  const savedTheme = localStorage.getItem('theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', savedTheme);
-  updateThemeIcon(savedTheme);
-}
-
-/**
- * Toggle between dark and light themes
- */
-function toggleTheme() {
-  const currentTheme = document.documentElement.getAttribute('data-theme');
-  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
-  updateThemeIcon(newTheme);
-  showToast(`Switched to ${newTheme} theme`, 'info', 2000);
-}
-
-/**
- * Update theme toggle icon
- */
-function updateThemeIcon(theme) {
-  const themeIcon = document.querySelector('.theme-icon');
-  if (themeIcon) {
-    themeIcon.textContent = theme === 'dark' ? '🌙' : '☀️';
-  }
-}
 
 // ============================================
 // Toast Notifications
@@ -130,20 +95,6 @@ function closeModal(modalId = 'dynamic-modal') {
 }
 
 // ============================================
-// Mobile Menu Toggle
-// ============================================
-
-/**
- * Toggle mobile navigation menu
- */
-function toggleMobileMenu() {
-  const nav = document.getElementById('main-nav');
-  if (nav) {
-    nav.classList.toggle('active');
-  }
-}
-
-// ============================================
 // API Helpers
 // ============================================
 
@@ -158,7 +109,8 @@ async function apiGet(endpoint) {
     if (!response.ok) {
       throw new Error(`HTTP error ${response.status}`);
     }
-    return await response.json();
+    const payload = await response.json();
+    return payload && payload.ok === true ? payload.data : payload;
   } catch (error) {
     showToast(`API Error: ${error.message}`, 'error');
     throw error;
@@ -256,12 +208,6 @@ document.addEventListener('keydown', (e) => {
     });
   }
 
-  // Ctrl/Cmd + K for theme toggle
-  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-    e.preventDefault();
-    toggleTheme();
-  }
-
   // Space bar for new quote (on homepage)
   if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
     const getQuoteBtn = document.getElementById('get-quote-btn');
@@ -280,19 +226,59 @@ document.addEventListener('keydown', (e) => {
  * Initialize the application
  */
 document.addEventListener('DOMContentLoaded', () => {
-  // Initialize theme
-  initTheme();
-
-  // Close mobile menu when clicking outside
-  document.addEventListener('click', (e) => {
-    const nav = document.getElementById('main-nav');
-    const toggle = document.querySelector('.mobile-menu-toggle');
-    if (nav && toggle && nav.classList.contains('active')) {
-      if (!nav.contains(e.target) && !toggle.contains(e.target)) {
-        nav.classList.remove('active');
+  document.querySelectorAll('[data-action]').forEach((control) => {
+    control.addEventListener('click', () => {
+      switch (control.dataset.action) {
+        case 'random-quote': getRandomQuote(); break;
+        case 'copy-quote': copyQuote(); break;
+        case 'copy-text': {
+          const target = document.getElementById(control.dataset.copyTarget);
+          if (target && navigator.clipboard) {
+            navigator.clipboard.writeText(target.value || target.textContent || '').catch(() => {});
+          }
+          break;
+        }
       }
-    }
+    });
   });
+
+  const queryForm = document.querySelector('[data-query-form]');
+  if (queryForm) {
+    queryForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const query = document.getElementById('query').value;
+      const result = document.getElementById('result');
+      try {
+        const response = await fetch('/api/graphql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
+        });
+        result.textContent = JSON.stringify(await response.json(), null, 2);
+      } catch {
+        result.textContent = 'The query request failed. Submit the form again to retry.';
+      }
+    });
+  }
+
+  const queryForm = document.querySelector('[data-query-form]');
+  if (queryForm) {
+    queryForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const query = document.getElementById('query').value;
+      const result = document.getElementById('result');
+      try {
+        const response = await fetch('/api/graphql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
+        });
+        result.textContent = JSON.stringify(await response.json(), null, 2);
+      } catch {
+        result.textContent = 'The query request failed. Submit the form again to retry.';
+      }
+    });
+  }
 
   // Log initialization
   console.log('Anime Quotes API - Frontend initialized');

@@ -17,7 +17,7 @@ import (
 
 const (
 	queryTimeout = 5 * time.Second
-	openTimeout  = 5 * time.Second
+	openTimeout  = 5 * time.Minute
 )
 
 type Database struct {
@@ -66,6 +66,10 @@ func Open(cfg config.DatabaseConfig, databaseDir string) (*Database, error) {
 	if maxIdle > maxOpen {
 		maxIdle = maxOpen
 	}
+	if driver == "sqlite" && dsn == ":memory:" {
+		maxOpen = 1
+		maxIdle = 1
+	}
 	maxLifetime := parseDuration(cfg.Pool.MaxLifetime, 5*time.Minute)
 	maxIdleTime := parseDuration(cfg.Pool.MaxIdleTime, time.Minute)
 	db.SetMaxOpenConns(maxOpen)
@@ -83,13 +87,68 @@ func Open(cfg config.DatabaseConfig, databaseDir string) (*Database, error) {
 		_ = db.Close()
 		return nil, err
 	}
-	if driver == "sqlite" {
+	if err := EnsureAppSecrets(ctx, db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	switch driver {
+	case "sqlite":
 		if err := setSQLiteFilePermissions(dsn); err != nil {
 			_ = db.Close()
 			return nil, err
 		}
 	}
 	return &Database{SQL: db, Driver: driver, Locality: locality}, nil
+}
+
+// OpenReadOnly opens an existing database without schema initialization or secret generation.
+func OpenReadOnly(cfg config.DatabaseConfig, databaseDir string) (*Database, error) {
+	driver := normalizeDriver(cfg.Driver)
+	dsn := strings.TrimSpace(os.ExpandEnv(cfg.URL))
+	if dsn == "" {
+		driver = "sqlite"
+		dsn = filepath.Join(databaseDir, "server.db")
+	} else if parsed, err := url.Parse(dsn); err == nil && parsed.Scheme == "libsql" {
+		driver = "libsql"
+	}
+
+	var db *sql.DB
+	var err error
+	switch driver {
+	case "sqlite":
+		parsed, parseErr := url.Parse(dsn)
+		if parseErr != nil {
+			return nil, fmt.Errorf("invalid SQLite database URL")
+		}
+		if parsed.Scheme != "file" {
+			absolute, absErr := filepath.Abs(dsn)
+			if absErr != nil {
+				return nil, fmt.Errorf("resolve SQLite path: %w", absErr)
+			}
+			parsed = &url.URL{Scheme: "file", Path: filepath.ToSlash(absolute)}
+		}
+		query := parsed.Query()
+		query.Set("mode", "ro")
+		query.Add("_pragma", "query_only(1)")
+		query.Add("_pragma", "busy_timeout(5000)")
+		parsed.RawQuery = query.Encode()
+		db, err = sql.Open("sqlite", parsed.String())
+	case "libsql":
+		db, err = openLibSQL(dsn)
+	default:
+		return nil, fmt.Errorf("unsupported database driver %q", cfg.Driver)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("open read-only database: %w", err)
+	}
+	db.SetMaxOpenConns(1)
+	ctx, cancel := context.WithTimeout(context.Background(), openTimeout)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("read-only database connection check failed: %w", err)
+	}
+	return &Database{SQL: db, Driver: driver, Locality: map[bool]string{true: "remote", false: "local"}[driver == "libsql"]}, nil
 }
 
 func normalizeDriver(driver string) string {
@@ -209,6 +268,16 @@ func EnsureSchema(parent context.Context, db *sql.DB) error {
 }
 
 var schemaStatements = []string{
+	`CREATE TABLE IF NOT EXISTS app_secrets (name TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+	`CREATE TABLE IF NOT EXISTS captcha_challenges (id TEXT PRIMARY KEY, answer_hash TEXT NOT NULL, expires_at TEXT NOT NULL)`,
+	`CREATE INDEX IF NOT EXISTS idx_captcha_challenges_expires ON captcha_challenges(expires_at)`,
+	`CREATE TABLE IF NOT EXISTS security_reports (tracking_id TEXT PRIMARY KEY, security_id TEXT NOT NULL, severity TEXT NOT NULL, component TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'received', body_enc BLOB NOT NULL, body_alg TEXT NOT NULL, contact_enc BLOB, credit_pref TEXT NOT NULL DEFAULT 'no', credit_name TEXT, researcher_comment TEXT NOT NULL DEFAULT '', disclosure_date TEXT, cve_requested INTEGER NOT NULL DEFAULT 0, token_hash TEXT NOT NULL, token_last_used TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, closed_at TEXT)`,
+	`CREATE INDEX IF NOT EXISTS idx_security_reports_status ON security_reports(status, created_at)`,
+	`CREATE TABLE IF NOT EXISTS security_thanks (tracking_id TEXT PRIMARY KEY, credit TEXT NOT NULL, severity TEXT NOT NULL, disclosed_on TEXT NOT NULL)`,
+	`CREATE TABLE IF NOT EXISTS security_pgp_metadata (id INTEGER PRIMARY KEY CHECK (id = 1), fingerprint TEXT NOT NULL, created_at TEXT NOT NULL, expires_at TEXT NOT NULL, last_rotated_at TEXT, keyservers_published TEXT NOT NULL DEFAULT '[]', revoked INTEGER NOT NULL DEFAULT 0)`,
+	`CREATE TABLE IF NOT EXISTS security_pgp_exports (id INTEGER PRIMARY KEY CHECK (id = 1), exported_at TEXT NOT NULL)`,
+	`CREATE TABLE IF NOT EXISTS security_pgp_lock (id INTEGER PRIMARY KEY CHECK (id = 1))`,
+	`INSERT OR IGNORE INTO security_pgp_lock (id) VALUES (1)`,
 	`CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL, type TEXT NOT NULL DEFAULT 'string', updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')))`,
 	`CREATE TABLE IF NOT EXISTS config_meta (id INTEGER PRIMARY KEY CHECK (id = 1), version INTEGER NOT NULL DEFAULT 1, updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')))`,
 	`INSERT OR IGNORE INTO config_meta (id, version) VALUES (1, 1)`,

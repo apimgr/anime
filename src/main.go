@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"crypto/sha256"
 	"crypto/subtle"
+	"database/sql"
 	_ "embed"
 	"flag"
 	"fmt"
@@ -75,7 +77,7 @@ func main() {
 	serviceCmd := flag.String("service", "", "Service commands: start, stop, restart, reload, status, --install, --uninstall, --disable, --help")
 
 	// Maintenance commands
-	maintenanceCmd := flag.String("maintenance", "", "Maintenance commands: backup, restore, update, mode, setup")
+	maintenanceCmd := flag.String("maintenance", "", "Maintenance commands: backup, restore, update, mode, setup, pgp, security")
 
 	// Application mode
 	modeFlag := flag.String("mode", "", "Application mode: production, development, debug")
@@ -372,10 +374,13 @@ Service Commands:
 
 Maintenance Commands:
   --maintenance backup [file]   Backup configuration and data
+  --maintenance backup test     Verify the backed-up PGP key can be decrypted
   --maintenance restore [file]  Restore from backup
   --maintenance update          Check for and install updates
   --maintenance mode            Show current application mode
   --maintenance setup           Run initial setup wizard
+  --maintenance pgp generate    Generate the security reporting key
+  --maintenance pgp export public [path]  Export its public key
 
 Environment Variables:
   PORT         Server port
@@ -403,7 +408,7 @@ func checkHealth(port string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("health check returned status %d", resp.StatusCode)
 	}
@@ -441,6 +446,15 @@ func handleMaintenanceCommand(cmd, configDir, dataDir, logsDir, backupDir, confi
 
 	switch cmd {
 	case "backup":
+		if len(args) > 0 && args[0] == "test" {
+			if len(args) != 1 {
+				log.Fatal("usage: anime --maintenance backup test")
+			}
+			if err := maintenanceBackupTest(configDir, dataDir, configPath); err != nil {
+				log.Fatalf("Backup test failed: %v", err)
+			}
+			return
+		}
 		backupFile := ""
 		if len(args) > 0 {
 			backupFile = args[0]
@@ -478,11 +492,310 @@ func handleMaintenanceCommand(cmd, configDir, dataDir, logsDir, backupDir, confi
 		setApplicationMode(args[0], configPath)
 	case "setup":
 		runInitialSetup(configPath)
+	case "pgp":
+		cfg, err := config.Load(configPath)
+		if err != nil {
+			log.Fatalf("Failed to load config: %v", err)
+		}
+		if err := handlePGPMaintenance(args, cfg, dataDir); err != nil {
+			log.Fatalf("PGP maintenance failed: %v", err)
+		}
+	case "security":
+		cfg, err := config.Load(configPath)
+		if err != nil {
+			log.Fatalf("Failed to load config: %v", err)
+		}
+		if err := handleSecurityMaintenance(args, cfg, dataDir); err != nil {
+			log.Fatalf("Security maintenance failed: %v", err)
+		}
 	default:
 		fmt.Printf("Unknown maintenance command: %s\n", cmd)
-		fmt.Println("Available commands: backup, restore, update, mode, setup")
+		fmt.Println("Available commands: backup, restore, update, mode, setup, pgp, security")
 		os.Exit(1)
 	}
+}
+
+func handlePGPMaintenance(args []string, cfg *config.Config, dataDir string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("usage: anime --maintenance pgp {generate|rotate|publish|import <file>|export public [path]|export private <path>|delete}")
+	}
+	if err := authorizeMaintenance(cfg); err != nil {
+		return err
+	}
+	db, err := database.Open(cfg.Server.Database, filepath.Join(dataDir, "db"))
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := db.SQL.Close(); err != nil {
+			log.Printf("database close failed: %v", err)
+		}
+	}()
+	installationSecret, err := database.AppSecret(context.Background(), db.SQL, "installation_secret")
+	if err != nil {
+		return err
+	}
+	securityDir := filepath.Join(cfg.ConfigDir, "security")
+	switch args[0] {
+	case "generate":
+		contact := strings.TrimSpace(cfg.Server.Contact.Security.Email)
+		if contact == "" {
+			contact = strings.TrimSpace(cfg.Server.Contact.Admin.Email)
+		}
+		if contact == "" && cfg.Server.FQDN != "" {
+			contact = "security@" + strings.TrimSpace(cfg.Server.FQDN)
+		}
+		if contact == "" {
+			return fmt.Errorf("configure server.contact.security.email or server.fqdn before generating the security key")
+		}
+		fingerprint, err := server.GenerateSecurityPGPKey(cfg.ConfigDir, installationSecret, "Anime Security", contact, time.Now().UTC())
+		if err != nil {
+			return err
+		}
+		created := time.Now().UTC()
+		_, err = db.SQL.Exec(`INSERT INTO security_pgp_metadata (id, fingerprint, created_at, expires_at, revoked) VALUES (1, ?, ?, ?, 0) ON CONFLICT(id) DO UPDATE SET fingerprint=excluded.fingerprint, created_at=excluded.created_at, expires_at=excluded.expires_at, last_rotated_at=NULL, revoked=0`, fingerprint, created.Format(time.RFC3339), created.AddDate(2, 0, 0).Format(time.RFC3339))
+		if err != nil {
+			_ = os.Remove(filepath.Join(securityDir, "pgp.pub.asc"))
+			_ = os.Remove(filepath.Join(securityDir, "pgp.priv.asc.enc"))
+			return err
+		}
+		cfg.WebSecurity.PublishPGPKey = true
+		if err := config.Save(filepath.Join(cfg.ConfigDir, "server.yml"), cfg); err != nil {
+			return err
+		}
+		fmt.Printf("Generated security PGP key %s\n", fingerprint)
+		if err := server.PublishSecurityPGPKey(context.Background(), cfg, db.SQL); err != nil {
+			log.Printf("security.pgp_publish_pending reason=%q", err.Error())
+		}
+		return nil
+	case "import":
+		if len(args) != 2 {
+			return fmt.Errorf("usage: anime --maintenance pgp import <file>")
+		}
+		if err := authorizeMaintenance(cfg); err != nil {
+			return err
+		}
+		private, err := os.ReadFile(args[1])
+		if err != nil {
+			return err
+		}
+		fingerprint, identityEmail, err := server.InspectSecurityPGPPrivateKey(private)
+		if err != nil {
+			return err
+		}
+		if existingPublic, readErr := os.ReadFile(filepath.Join(securityDir, "pgp.pub.asc")); readErr == nil {
+			existingFingerprint, parseErr := server.InspectSecurityPGPPublicKey(existingPublic)
+			if parseErr != nil {
+				return parseErr
+			}
+			if existingFingerprint != fingerprint {
+				return fmt.Errorf("a different security key is active; rotate it rather than importing over retained reports")
+			}
+		} else if !os.IsNotExist(readErr) {
+			return readErr
+		}
+		var storedFingerprint string
+		metadataErr := db.SQL.QueryRow(`SELECT fingerprint FROM security_pgp_metadata WHERE id = 1`).Scan(&storedFingerprint)
+		if metadataErr == nil && storedFingerprint != fingerprint {
+			return fmt.Errorf("imported key does not match the recorded security key; retained reports may require the original key")
+		}
+		if metadataErr == sql.ErrNoRows {
+			var encryptedReports int
+			if err := db.SQL.QueryRow(`SELECT COUNT(*) FROM security_reports WHERE body_alg = 'pgp'`).Scan(&encryptedReports); err != nil {
+				return err
+			}
+			if encryptedReports > 0 {
+				return fmt.Errorf("cannot import an unknown key while PGP-encrypted reports exist")
+			}
+		} else if metadataErr != nil {
+			return metadataErr
+		}
+		expectedEmail := strings.TrimSpace(cfg.Server.Contact.Security.Email)
+		if expectedEmail == "" {
+			expectedEmail = strings.TrimSpace(cfg.Server.Contact.Admin.Email)
+		}
+		if expectedEmail == "" && strings.TrimSpace(cfg.Server.FQDN) != "" {
+			expectedEmail = "security@" + strings.TrimSpace(cfg.Server.FQDN)
+		}
+		if expectedEmail != "" && !strings.EqualFold(expectedEmail, identityEmail) {
+			fmt.Printf("Warning: imported key identity %s does not match configured security contact %s. Type IMPORT KEY to override: ", identityEmail, expectedEmail)
+			confirmation, readErr := bufio.NewReader(os.Stdin).ReadString('\n')
+			if readErr != nil || strings.TrimSpace(confirmation) != "IMPORT KEY" {
+				return fmt.Errorf("key identity mismatch; import cancelled")
+			}
+		}
+		fingerprint, _, err = server.ImportSecurityPGPPrivateKey(cfg.ConfigDir, installationSecret, private)
+		if err != nil {
+			return err
+		}
+		created := time.Now().UTC()
+		_, err = db.SQL.Exec(`INSERT INTO security_pgp_metadata (id, fingerprint, created_at, expires_at, revoked) VALUES (1, ?, ?, ?, 0) ON CONFLICT(id) DO UPDATE SET fingerprint=excluded.fingerprint, created_at=excluded.created_at, expires_at=excluded.expires_at, last_rotated_at=NULL, revoked=0`, fingerprint, created.Format(time.RFC3339), created.AddDate(2, 0, 0).Format(time.RFC3339))
+		if err != nil {
+			return err
+		}
+		cfg.WebSecurity.PublishPGPKey = true
+		if err := config.Save(filepath.Join(cfg.ConfigDir, "server.yml"), cfg); err != nil {
+			return err
+		}
+		if err := server.PublishSecurityPGPKey(context.Background(), cfg, db.SQL); err != nil {
+			log.Printf("security.pgp_publish_pending reason=%q", err.Error())
+		}
+		fmt.Printf("Imported security PGP key %s\n", fingerprint)
+		return nil
+	case "publish":
+		if len(args) != 1 {
+			return fmt.Errorf("usage: anime --maintenance pgp publish")
+		}
+		return server.PublishSecurityPGPKey(context.Background(), cfg, db.SQL)
+	case "rotate":
+		if len(args) != 1 {
+			return fmt.Errorf("usage: anime --maintenance pgp rotate")
+		}
+		contact := strings.TrimSpace(cfg.Server.Contact.Security.Email)
+		if contact == "" {
+			contact = strings.TrimSpace(cfg.Server.Contact.Admin.Email)
+		}
+		if contact == "" && cfg.Server.FQDN != "" {
+			contact = "security@" + strings.TrimSpace(cfg.Server.FQDN)
+		}
+		if contact == "" {
+			return fmt.Errorf("configure server.contact.security.email or server.fqdn before rotating the security key")
+		}
+		fingerprint, err := server.RotateSecurityPGPKey(cfg.ConfigDir, installationSecret, db.SQL, "Anime Security", contact, time.Now().UTC())
+		if err != nil {
+			return err
+		}
+		cfg.WebSecurity.PublishPGPKey = true
+		if err := config.Save(filepath.Join(cfg.ConfigDir, "server.yml"), cfg); err != nil {
+			return err
+		}
+		if err := server.PublishSecurityPGPKey(context.Background(), cfg, db.SQL); err != nil {
+			log.Printf("security.pgp_publish_pending reason=%q", err.Error())
+		}
+		fmt.Printf("Rotated security PGP key %s\n", fingerprint)
+		return nil
+	case "export":
+		if len(args) < 2 {
+			return fmt.Errorf("usage: anime --maintenance pgp export {public [path]|private <path>}")
+		}
+		switch args[1] {
+		case "public":
+			key, err := os.ReadFile(filepath.Join(securityDir, "pgp.pub.asc"))
+			if err != nil {
+				return err
+			}
+			if len(args) < 3 {
+				_, err = os.Stdout.Write(key)
+				return err
+			}
+			return os.WriteFile(args[2], key, 0644)
+		case "private":
+			if len(args) != 3 {
+				return fmt.Errorf("usage: anime --maintenance pgp export private <path>")
+			}
+			if err := authorizeMaintenance(cfg); err != nil {
+				return err
+			}
+			var previousExport string
+			err := db.SQL.QueryRow(`SELECT exported_at FROM security_pgp_exports WHERE id = 1`).Scan(&previousExport)
+			if err == nil {
+				last, parseErr := time.Parse(time.RFC3339, previousExport)
+				if parseErr == nil && time.Since(last) < time.Hour {
+					return fmt.Errorf("private-key export is limited to once per hour")
+				}
+			} else if err != sql.ErrNoRows {
+				return err
+			}
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Reason for exporting the private key: ")
+			reason, err := reader.ReadString('\n')
+			if err != nil || strings.TrimSpace(reason) == "" {
+				return fmt.Errorf("an export reason is required")
+			}
+			fmt.Print("Type EXPORT PRIVATE SECURITY KEY to continue: ")
+			confirmation, err := reader.ReadString('\n')
+			if err != nil || strings.TrimSpace(confirmation) != "EXPORT PRIVATE SECURITY KEY" {
+				return fmt.Errorf("confirmation did not match")
+			}
+			if err := server.ExportSecurityPGPPrivateKey(cfg.ConfigDir, installationSecret, args[2]); err != nil {
+				return err
+			}
+			exportedAt := time.Now().UTC().Format(time.RFC3339)
+			_, err = db.SQL.Exec(`INSERT INTO security_pgp_exports (id, exported_at) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET exported_at=excluded.exported_at`, exportedAt)
+			if err != nil {
+				return err
+			}
+			operatorIP := "local"
+			if remote := strings.Fields(os.Getenv("SSH_CLIENT")); len(remote) > 0 {
+				operatorIP = remote[0]
+			}
+			_, _ = db.SQL.Exec(`INSERT INTO audit_log (timestamp, level, category, action, actor_ip, target_type, target_id, details, success) VALUES (?, 'warning', 'security', 'private_key_exported', ?, 'pgp_key', 'project', ?, 1)`, time.Now().UTC().Unix(), operatorIP, strings.TrimSpace(reason))
+			log.Printf("security.private_key_exported operator_ip=%q path=%q reason=%q", operatorIP, args[2], strings.TrimSpace(reason))
+			return nil
+		default:
+			return fmt.Errorf("unknown PGP export type %q", args[1])
+		}
+	case "delete":
+		if err := authorizeMaintenance(cfg); err != nil {
+			return err
+		}
+		fmt.Println("Warning: retained PGP-encrypted reports will no longer be decryptable.")
+		fmt.Print("Type DELETE SECURITY PGP KEY to continue: ")
+		confirmation, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		if err != nil || strings.TrimSpace(confirmation) != "DELETE SECURITY PGP KEY" {
+			return fmt.Errorf("confirmation did not match")
+		}
+		for _, filename := range []string{"pgp.pub.asc", "pgp.pub.asc.sig", "pgp.pub.old.asc", "pgp.priv.asc.enc", "pgp.priv.old.asc.enc"} {
+			if err := os.Remove(filepath.Join(securityDir, filename)); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+		}
+		_, err = db.SQL.Exec(`UPDATE security_pgp_metadata SET revoked=1 WHERE id=1`)
+		if err != nil {
+			return err
+		}
+		cfg.WebSecurity.PublishPGPKey = false
+		err = config.Save(filepath.Join(cfg.ConfigDir, "server.yml"), cfg)
+		return err
+	default:
+		return fmt.Errorf("unknown PGP action %q; available: generate, rotate, publish, import, export, delete", args[0])
+	}
+}
+
+func handleSecurityMaintenance(args []string, cfg *config.Config, dataDir string) error {
+	if err := authorizeMaintenance(cfg); err != nil {
+		return err
+	}
+	db, err := database.Open(cfg.Server.Database, filepath.Join(dataDir, "db"))
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := db.SQL.Close(); err != nil {
+			log.Printf("database close failed: %v", err)
+		}
+	}()
+	return server.MaintainSecurityReports(context.Background(), db, cfg, args, os.Stdout)
+}
+
+func authorizeMaintenance(cfg *config.Config) error {
+	if paths.IsElevated() {
+		return nil
+	}
+	fmt.Print("Operator token: ")
+	provided, err := term.ReadPassword(int(os.Stdin.Fd()))
+	fmt.Println()
+	if err != nil {
+		return fmt.Errorf("read operator token: %w", err)
+	}
+	providedHash := sha256.Sum256(provided)
+	configuredHash := sha256.Sum256([]byte(cfg.Server.Token))
+	valid := subtle.ConstantTimeCompare(providedHash[:], configuredHash[:])
+	valid &= subtle.ConstantTimeEq(int32(len(provided)), int32(len(cfg.Server.Token)))
+	if cfg.Server.Token == "" || valid != 1 {
+		return fmt.Errorf("invalid credentials")
+	}
+	return nil
 }
 
 func setApplicationMode(value, configPath string) {
@@ -592,11 +905,15 @@ func serviceUninstall() {
 	case "linux":
 		runCommand("systemctl", "stop", "anime")
 		runCommand("systemctl", "disable", "anime")
-		os.Remove("/etc/systemd/system/anime.service")
+		if err := os.Remove("/etc/systemd/system/anime.service"); err != nil && !os.IsNotExist(err) {
+			log.Printf("Failed to remove service file: %v", err)
+		}
 		runCommand("systemctl", "daemon-reload")
 	case "darwin":
 		runCommand("launchctl", "unload", "/Library/LaunchDaemons/us.apimgr.anime.plist")
-		os.Remove("/Library/LaunchDaemons/us.apimgr.anime.plist")
+		if err := os.Remove("/Library/LaunchDaemons/us.apimgr.anime.plist"); err != nil && !os.IsNotExist(err) {
+			log.Printf("Failed to remove service plist: %v", err)
+		}
 	default:
 		fmt.Printf("Service uninstallation not supported on %s\n", runtime.GOOS)
 	}
@@ -680,6 +997,67 @@ func maintenanceBackup(configDir, dataDir, backupFile string) {
 	fmt.Printf("Backup created successfully: %s\n", backupFile)
 }
 
+func maintenanceBackupTest(configDir, dataDir, configPath string) error {
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return err
+	}
+	privatePath := filepath.Join(configDir, "security", "pgp.priv.asc.enc")
+	publicPath := filepath.Join(configDir, "security", "pgp.pub.asc")
+	if _, err := os.Stat(privatePath); os.IsNotExist(err) {
+		if _, publicErr := os.Stat(publicPath); os.IsNotExist(publicErr) {
+			fmt.Println("Backup test: no PGP keypair is configured")
+			return nil
+		}
+	}
+	db, err := database.OpenReadOnly(cfg.Server.Database, filepath.Join(dataDir, "db"))
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := db.SQL.Close(); err != nil {
+			log.Printf("database close failed: %v", err)
+		}
+	}()
+	installationSecret, err := database.AppSecret(context.Background(), db.SQL, "installation_secret")
+	if err != nil {
+		return err
+	}
+	private, err := server.DecryptSecurityPGPPrivateKey(privatePath, installationSecret)
+	if err != nil {
+		return fmt.Errorf("encrypted private key cannot be decrypted: %w", err)
+	}
+	defer func() {
+		for index := range private {
+			private[index] = 0
+		}
+	}()
+	privateFingerprint, _, err := server.InspectSecurityPGPPrivateKey(private)
+	if err != nil {
+		return fmt.Errorf("decrypted private key is invalid: %w", err)
+	}
+	public, err := os.ReadFile(publicPath)
+	if err != nil {
+		return fmt.Errorf("read public key: %w", err)
+	}
+	publicFingerprint, err := server.InspectSecurityPGPPublicKey(public)
+	if err != nil {
+		return fmt.Errorf("public key is invalid: %w", err)
+	}
+	if privateFingerprint != publicFingerprint {
+		return fmt.Errorf("public and private key fingerprints do not match")
+	}
+	var recordedFingerprint string
+	if err := db.SQL.QueryRow(`SELECT fingerprint FROM security_pgp_metadata WHERE id = 1`).Scan(&recordedFingerprint); err != nil {
+		return fmt.Errorf("read PGP key metadata: %w", err)
+	}
+	if recordedFingerprint != privateFingerprint {
+		return fmt.Errorf("database and keypair fingerprints do not match")
+	}
+	fmt.Printf("Backup test passed: encrypted PGP private key decrypts and matches fingerprint %s\n", privateFingerprint)
+	return nil
+}
+
 func maintenanceRestore(backupFile, configDir, dataDir string) {
 	fmt.Printf("Restoring from backup: %s\n", backupFile)
 
@@ -691,6 +1069,18 @@ func maintenanceRestore(backupFile, configDir, dataDir string) {
 	cmd := exec.Command("tar", "-xzf", backupFile, "-C", "/")
 	if err := cmd.Run(); err != nil {
 		log.Fatalf("Restore failed: %v", err)
+	}
+	if cfg, err := config.Load(filepath.Join(configDir, "server.yml")); err == nil {
+		if keyExists, _ := os.Stat(filepath.Join(configDir, "security", "pgp.pub.asc")); keyExists != nil {
+			if db, openErr := database.Open(cfg.Server.Database, filepath.Join(dataDir, "db")); openErr == nil {
+				if publishErr := server.PublishSecurityPGPKey(context.Background(), cfg, db.SQL); publishErr != nil {
+					log.Printf("security.pgp_restore_publish_pending reason=%q", publishErr.Error())
+				}
+				_ = db.SQL.Close()
+			} else {
+				log.Printf("security.pgp_restore_publish_pending reason=database_unavailable")
+			}
+		}
 	}
 
 	fmt.Println("Restore completed successfully")

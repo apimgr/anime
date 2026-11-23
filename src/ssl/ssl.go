@@ -193,7 +193,7 @@ func (cs *ChallengeServer) ServeHTTP(w http.ResponseWriter, r *http.Request) boo
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(auth))
+	_, _ = w.Write([]byte(auth))
 	return true
 }
 

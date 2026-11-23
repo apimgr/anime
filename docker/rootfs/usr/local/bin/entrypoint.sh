@@ -71,14 +71,14 @@ cleanup() {
 # SIGRTMIN+3 (37) is the Docker STOPSIGNAL
 # SIGTERM is propagated by tini -p SIGTERM
 trap cleanup SIGTERM SIGINT SIGQUIT
-trap cleanup SIGRTMIN+3 2>/dev/null || trap cleanup 37
+trap cleanup RTMIN+3
 
 # -----------------------------------------------------------------------------
 # Directory setup
 # -----------------------------------------------------------------------------
 setup_directories() {
     log "Setting up directories..."
-    mkdir -p /config /data/db /data/logs /data/tor /data/geoip /data/backup
+    mkdir -p "${CONFIG_DIR:-/config/anime}" "${DATA_DIR:-/data/anime}" "${LOG_DIR:-/data/log/anime}" /data/tor /data/geoip /data/backup
 
     # Fix permissions for Tor (runs as tor user)
     if [ "$TOR_ENABLED" = "true" ]; then
@@ -103,7 +103,7 @@ start_tor() {
 DataDirectory ${TOR_DATA_DIR}
 HiddenServiceDir ${TOR_DATA_DIR}/hidden_service
 HiddenServicePort 80 127.0.0.1:80
-Log notice file /data/logs/tor.log
+Log notice file ${LOG_DIR:-/data/log/anime}/tor.log
 EOF
     fi
 
@@ -118,6 +118,7 @@ EOF
         if [ -f "${TOR_DATA_DIR}/hidden_service/hostname" ]; then
             local onion_addr
             onion_addr=$(cat "${TOR_DATA_DIR}/hidden_service/hostname")
+            export TOR_HOSTNAME="$onion_addr"
             log "Tor hidden service: ${onion_addr}"
             break
         fi
@@ -132,9 +133,11 @@ EOF
 start_app() {
     log "Starting ${APP_NAME}..."
 
-    # Run the main application on port 80 (container internal port)
-    # Pass through any additional arguments from CMD
-    "$APP_BIN" --port 80 "$@" &
+    if [ "$TOR_ENABLED" != "true" ]; then
+        exec env ENABLE_TOR=false "$APP_BIN" --address "${LISTEN:-0.0.0.0}" --port "${PORT:-80}" "$@"
+    fi
+
+    TOR_PID="${PIDS[0]}" ENABLE_TOR=true "$APP_BIN" --address "${LISTEN:-0.0.0.0}" --port "${PORT:-80}" "$@" &
     PIDS+=($!)
     log "${APP_NAME} started (PID: ${PIDS[-1]})"
 }
@@ -162,7 +165,7 @@ wait_for_services() {
 # -----------------------------------------------------------------------------
 main() {
     log "Container starting..."
-    log "MODE: ${MODE:-development}"
+    log "MODE: ${MODE:-production}"
     log "TZ: ${TZ:-UTC}"
     log "ENABLE_TOR: ${TOR_ENABLED}"
 

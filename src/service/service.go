@@ -192,10 +192,10 @@ func uninstallSystemd() error {
 	servicePath := fmt.Sprintf("/etc/systemd/system/%s.service", appName)
 
 	// Stop service if running
-	exec.Command("systemctl", "stop", appName).Run()
+	_ = exec.Command("systemctl", "stop", appName).Run()
 
 	// Disable service
-	exec.Command("systemctl", "disable", appName).Run()
+	_ = exec.Command("systemctl", "disable", appName).Run()
 
 	// Remove service file
 	if err := os.Remove(servicePath); err != nil && !os.IsNotExist(err) {
@@ -203,7 +203,9 @@ func uninstallSystemd() error {
 	}
 
 	// Reload systemd
-	exec.Command("systemctl", "daemon-reload").Run()
+	if err := exec.Command("systemctl", "daemon-reload").Run(); err != nil {
+		return fmt.Errorf("failed to reload systemd configuration: %w", err)
+	}
 
 	fmt.Printf("✅ Service uninstalled: %s\n", servicePath)
 	return nil
@@ -244,7 +246,9 @@ exec svlogd -tt ./main
 
 	// Link to service directory
 	linkPath := fmt.Sprintf("/var/service/%s", appName)
-	os.Symlink(svDir, linkPath)
+	if err := os.Symlink(svDir, linkPath); err != nil {
+		return fmt.Errorf("failed to link runit service: %w", err)
+	}
 
 	fmt.Printf("✅ Runit service installed at: %s\n", svDir)
 	return nil
@@ -256,13 +260,17 @@ func uninstallRunit() error {
 	linkPath := fmt.Sprintf("/var/service/%s", appName)
 
 	// Stop service
-	exec.Command("sv", "stop", appName).Run()
+	_ = exec.Command("sv", "stop", appName).Run()
 
 	// Remove link
-	os.Remove(linkPath)
+	if err := os.Remove(linkPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove runit service link: %w", err)
+	}
 
 	// Remove service directory
-	os.RemoveAll(svDir)
+	if err := os.RemoveAll(svDir); err != nil {
+		return fmt.Errorf("failed to remove runit service directory: %w", err)
+	}
 
 	fmt.Printf("✅ Runit service uninstalled\n")
 	return nil
@@ -331,7 +339,7 @@ func uninstallLaunchd() error {
 	plistPath := fmt.Sprintf("/Library/LaunchDaemons/com.%s.%s.plist", orgName, appName)
 
 	// Unload if running
-	exec.Command("launchctl", "unload", plistPath).Run()
+	_ = exec.Command("launchctl", "unload", plistPath).Run()
 
 	// Remove plist
 	if err := os.Remove(plistPath); err != nil && !os.IsNotExist(err) {
@@ -380,7 +388,7 @@ func installWindows() error {
 // uninstallWindows removes Windows service
 func uninstallWindows() error {
 	// Stop service
-	exec.Command("sc.exe", "stop", appName).Run()
+	_ = exec.Command("sc.exe", "stop", appName).Run()
 
 	// Delete service
 	if err := exec.Command("sc.exe", "delete", appName).Run(); err != nil {
@@ -441,7 +449,7 @@ func uninstallBSDRC() error {
 	rcPath := fmt.Sprintf("/usr/local/etc/rc.d/%s", appName)
 
 	// Stop service
-	exec.Command("service", appName, "stop").Run()
+	_ = exec.Command("service", appName, "stop").Run()
 
 	// Remove script
 	if err := os.Remove(rcPath); err != nil && !os.IsNotExist(err) {
@@ -525,10 +533,12 @@ func Restart() error {
 	case ServiceRunit:
 		return exec.Command("sv", "restart", appName).Run()
 	case ServiceLaunchd:
-		Stop()
+		if err := Stop(); err != nil {
+			return err
+		}
 		return Start()
 	case ServiceWindows:
-		exec.Command("sc.exe", "stop", appName).Run()
+		_ = exec.Command("sc.exe", "stop", appName).Run()
 		return exec.Command("sc.exe", "start", appName).Run()
 	case ServiceBSDRC:
 		return exec.Command("service", appName, "restart").Run()

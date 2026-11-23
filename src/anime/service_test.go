@@ -94,12 +94,19 @@ func TestGetTotalQuotes(t *testing.T) {
 	}
 }
 
-
 func TestSearchQuotesFiltersCaseInsensitively(t *testing.T) {
 	svc, err := NewService([]byte(sampleQuotes))
-	if err != nil { t.Fatalf("NewService returned error: %v", err) }
+	if err != nil {
+		t.Fatalf("NewService returned error: %v", err)
+	}
 	results := svc.SearchQuotes("protect", "bleach", "ichigo")
-	if len(results) != 1 { t.Fatalf("expected one matching quote, got %d", len(results)) }
-	if results[0].Anime != "Bleach" || results[0].Character != "Ichigo Kurosaki" { t.Fatalf("unexpected quote: %#v", results[0]) }
-	if got := svc.SearchQuotes("naruto", "bleach", ""); len(got) != 0 { t.Fatalf("expected combined filters to return no quotes, got %d", len(got)) }
+	if len(results) != 1 {
+		t.Fatalf("expected one matching quote, got %d", len(results))
+	}
+	if results[0].Anime != "Bleach" || results[0].Character != "Ichigo Kurosaki" {
+		t.Fatalf("unexpected quote: %#v", results[0])
+	}
+	if got := svc.SearchQuotes("naruto", "bleach", ""); len(got) != 0 {
+		t.Fatalf("expected combined filters to return no quotes, got %d", len(got))
+	}
 }

@@ -1,4 +1,4 @@
-name: anime-test
+name: anime
 
 x-logging: &default-logging
   options:
@@ -9,19 +9,19 @@ x-logging: &default-logging
 services:
   anime:
     image: ghcr.io/apimgr/anime:devel
-    container_name: anime-test
+    container_name: anime-app
     hostname: anime
     restart: "no"
     pull_policy: always
     logging: *default-logging
     environment:
       PORT: 80
-      ADDRESS: ::
+      LISTEN: "::"
       MODE: development
       DEBUG: "true"
       CONFIG_DIR: /config/anime
       DATA_DIR: /data/anime
-      LOGS_DIR: /data/log/anime
+      LOG_DIR: /data/log/anime
       TZ: ${TZ:-UTC}
       ENABLE_TOR: "false"
     volumes:
@@ -36,9 +36,9 @@ services:
       retries: 3
       start_period: 10m
     networks:
-      - anime-test
+      - anime
 
 networks:
-  anime-test:
-    name: anime-test
+  anime:
+    name: anime
     external: false

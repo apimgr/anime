@@ -1,0 +1,5 @@
+* @apimgr
+/.github/ @apimgr
+/docker/ @apimgr
+/src/ssl/ @apimgr
+/src/updater/ @apimgr

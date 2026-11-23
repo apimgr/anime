@@ -1,54 +1,117 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="{{.Lang}}" dir="{{.Dir}}" data-theme="{{.Theme}}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Anime Quotes API - Get random anime quotes and discover wisdom from your favorite anime characters">
-    <meta name="keywords" content="anime, quotes, api, anime quotes, random quotes">
-    <meta name="author" content="Anime Quotes API">
-    <title>{{.Title}} - Anime Quotes API</title>
+    <meta name="description" content="{{.Description}}">
+    <meta name="robots" content="{{.Robots}}">
+    <meta name="keywords" content="{{join .Keywords ", "}}">
+    <meta name="author" content="{{.Author}}">
+    <link rel="canonical" href="{{.CanonicalURL}}">
+    {{range $name, $content := .MetaTags}}{{if $content}}<meta name="{{$name}}" content="{{$content}}">{{end}}{{end}}
+    {{range .VerificationTags}}{{if .Name}}<meta name="{{.Name}}" content="{{.Content}}">{{else}}<meta property="{{.Property}}" content="{{.Content}}">{{end}}{{end}}
+    <title>{{.SEOTitle}}{{if .BrandingTagline}}{{.TitleSeparator}}{{.BrandingTagline}}{{end}}</title>
+    {{if .OpenGraphEnabled}}
+    <meta property="og:title" content="{{.SEOTitle}}">
+    <meta property="og:description" content="{{.Description}}">
+    {{if .OpenGraphImage}}<meta property="og:image" content="{{.OpenGraphImage}}">{{end}}
+    <meta property="og:type" content="{{.OpenGraphType}}">
+    <meta property="og:url" content="{{.CanonicalURL}}">
+    <meta property="og:site_name" content="{{.OpenGraphSiteName}}">
+    {{end}}
+    {{if .TwitterEnabled}}
+    <meta name="twitter:card" content="{{.TwitterCard}}">
+    <meta name="twitter:title" content="{{.SEOTitle}}">
+    <meta name="twitter:description" content="{{.Description}}">
+    {{if .OpenGraphImage}}<meta name="twitter:image" content="{{.OpenGraphImage}}">{{end}}
+    {{if .TwitterHandle}}<meta name="twitter:site" content="{{.TwitterHandle}}">{{end}}
+    {{if .TwitterCreator}}<meta name="twitter:creator" content="{{.TwitterCreator}}">{{end}}
+    {{end}}
+    <script type="application/ld+json">{{jsonLD .StructuredData}}</script>
     <link rel="stylesheet" href="/static/css/main.css">
-    <link rel="icon" type="image/png" href="/static/images/favicon.png">
+    <link rel="icon" href="{{if .Favicon}}{{.Favicon}}{{else}}/static/images/favicon.png{{end}}">
 </head>
 <body>
+    <a class="skip-link" href="#main-content">{{t .Lang "a11y.skip_to_content"}}</a>
+    <a class="skip-link" href="#main-nav">{{t .Lang "a11y.skip_to_navigation"}}</a>
     <!-- Main Header -->
     <header id="main-header">
         <div class="header-container">
-            <div class="header-left">
-                <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle mobile menu">☰</button>
-                <a class="logo" href="/">Anime Quotes</a>
-            </div>
-            <nav id="main-nav" class="header-center" aria-label="Main navigation">
-                <a href="/" {{if eq .Page "home"}}class="active"{{end}}>Home</a>
-                <a href="/quotes">All Quotes</a>
-                <a href="/server/healthz">Health</a>
-                <a href="/server/docs/swagger">API docs</a>
-                <a href="/server/docs/graphql">GraphQL</a>
-                <a href="/server/about">About</a>
+            <a class="logo" href="/">{{if .BrandingLogo}}<img src="{{.BrandingLogo}}" alt="{{.BrandingTitle}}">{{else}}{{.BrandingTitle}}{{end}}</a>
+            <input class="mobile-menu-state" id="mobile-menu-state" type="checkbox">
+            <nav id="main-nav" class="nav-links" aria-label="{{t .Lang "nav.main_navigation"}}">
+                <a href="/" {{if eq .Page "home"}}class="active" aria-current="page"{{end}}>{{t .Lang "nav.home"}}</a>
+                <a href="/quotes" {{if eq .Page "quotes"}}class="active" aria-current="page"{{end}}>{{t .Lang "nav.all_quotes"}}</a>
             </nav>
-            <div class="header-right">
-                <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark/light theme">
-                    <span class="theme-icon">🌙</span>
-                </button>
+            <label class="mobile-menu-toggle" for="mobile-menu-state" aria-label="{{t .Lang "nav.toggle_navigation"}}">☰</label>
+            <div class="header-actions">
+                <a href="/server/preferences" aria-label="{{t .Lang "nav.preferences"}}">{{t .Lang "nav.preferences"}}</a>
+                <form method="post" action="/server/preferences" class="theme-toggle-form">
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                    <input type="hidden" name="theme" value="{{.NextTheme}}">
+                    <input type="hidden" name="redirect" value="{{.CurrentPath}}">
+                    <button class="theme-toggle" type="submit" aria-label="{{tf .Lang "theme.switch" "mode" (t .Lang (printf "theme.%s" .Theme))}}" title="{{t .Lang "theme.switch_title"}}">
+                        <span class="theme-icon" aria-hidden="true">{{if eq .Theme "dark"}}☾{{else if eq .Theme "light"}}☀{{else}}◐{{end}}</span>
+                    </button>
+                </form>
             </div>
         </div>
+        {{if .OperatorHeader}}<div class="branding-header-content">{{.OperatorHeader}}</div>{{end}}
     </header>
 
     <!-- Main Content -->
     <main id="main-content">
-        {{template "content" .}}
+        {{if eq .ContentTemplate "home-content"}}{{template "home-content" .}}{{end}}
+        {{if eq .ContentTemplate "info-content"}}{{template "info-content" .}}{{end}}
+        {{if eq .ContentTemplate "mcp-content"}}{{template "mcp-content" .}}{{end}}
+        {{if eq .ContentTemplate "health-content"}}{{template "health-content" .}}{{end}}
+        {{if eq .ContentTemplate "quotes-content"}}{{template "quotes-content" .}}{{end}}
+        {{if eq .ContentTemplate "swagger-content"}}{{template "swagger-content" .}}{{end}}
+        {{if eq .ContentTemplate "graphql-content"}}{{template "graphql-content" .}}{{end}}
+        {{if eq .ContentTemplate "preferences-content"}}{{template "preferences-content" .}}{{end}}
+        {{if eq .ContentTemplate "preferences-sync-content"}}{{template "preferences-sync-content" .}}{{end}}
+        {{if eq .ContentTemplate "tokens-content"}}{{template "tokens-content" .}}{{end}}
+        {{if eq .ContentTemplate "security-content"}}{{template "security-content" .}}{{end}}
+        {{if eq .ContentTemplate "contact-content"}}{{template "contact-content" .}}{{end}}
+        {{if eq .ContentTemplate "contact-review-content"}}{{template "contact-review-content" .}}{{end}}
+        {{if eq .ContentTemplate "contact-success-content"}}{{template "contact-success-content" .}}{{end}}
+        {{if eq .ContentTemplate "error-content"}}{{template "error-content" .}}{{end}}
     </main>
+
+    {{if .OperatorFooter}}<div class="branding-footer-content">{{.OperatorFooter}}</div>{{else if not .FooterContentConfigured}}<div class="branding-footer-content"><p><a href="https://github.com/apimgr/anime">Made with</a> ❤️ · {{.Version}}</p></div>{{end}}
 
     <!-- Main Footer -->
     <footer id="main-footer">
         <div class="footer-container">
-            <p>&copy; 2024 Anime Quotes API - Open Source MIT License</p>
-            <p style="margin-top: 8px; color: var(--text-tertiary); font-size: 0.875rem;">
-                Press <kbd style="padding: 2px 6px; background: var(--bg-tertiary); border-radius: 4px;">Ctrl+K</kbd> to toggle theme |
-                <kbd style="padding: 2px 6px; background: var(--bg-tertiary); border-radius: 4px;">Space</kbd> for new quote
-            </p>
+            <nav aria-label="{{t .Lang "footer.navigation"}}">
+                <a href="/server/about">{{t .Lang "footer.about"}}</a>
+                <a href="/server/help">{{t .Lang "footer.help"}}</a>
+                <a href="/server/healthz">{{t .Lang "footer.health"}}</a>
+                <a href="/server/docs/swagger">{{t .Lang "footer.api_docs"}}</a>
+                <a href="/server/docs/graphql">{{t .Lang "footer.graphql"}}</a>
+                <a href="/server/preferences">{{t .Lang "nav.preferences"}}</a>
+                <a href="/server/preferences#language" lang="{{.Lang}}">{{.LanguageName}}</a>
+                <a href="/server/privacy">{{t .Lang "footer.privacy"}}</a>
+                <a href="/server/terms">{{t .Lang "footer.terms"}}</a>
+                <a href="/server/security">{{t .Lang "footer.security"}}</a>
+                <a href="https://github.com/apimgr/anime">{{t .Lang "footer.source_code"}}</a>
+            </nav>
+            <p>{{tf .Lang "footer.copyright" "app_name" .BrandingTitle "version" .Version}}</p>
+            <p><a href="/server/healthz">{{tf .Lang "footer.last_update" "build_date" .BuildDate}}</a></p>
         </div>
     </footer>
+
+    {{if .ShowConsentBanner}}
+    <aside class="consent-banner consent-banner-{{.ConsentPosition}}" aria-label="{{t .Lang "consent.banner_label"}}">
+        <p>{{.ConsentMessage}} <a href="{{.ConsentPolicyURL}}">{{.ConsentPolicyText}}</a>{{if .ConsentShowPreferences}} · <a href="/server/preferences">{{.ConsentPreferencesText}}</a>{{end}}</p>
+        <form method="post" action="/server/consent">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <input type="hidden" name="redirect" value="{{.CurrentPath}}">
+            <button class="consent-decline" type="submit" name="choice" value="decline">{{.ConsentDecline}}</button>
+            <button class="consent-accept" type="submit" name="choice" value="accept">{{.ConsentAccept}}</button>
+        </form>
+    </aside>
+    {{end}}
 
     <!-- Toast Container -->
     <div id="toast-container"></div>
@@ -57,6 +120,6 @@
     <div id="modal-container"></div>
 
     <!-- Main JavaScript -->
-    <script src="/static/js/main.js"></script>
+    <script src="/static/js/main.js" defer></script>
 </body>
 </html>

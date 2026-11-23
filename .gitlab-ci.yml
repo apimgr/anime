@@ -1,0 +1,119 @@
+stages:
+  - build
+  - test
+  - security
+  - release
+
+variables:
+  CGO_ENABLED: "0"
+  GOFLAGS: "-buildvcs=false"
+  BUILD_IMAGE: "casjaysdev/go@sha256:0db19a251249c5aca053d4c25a7b832cdc66422bdb10067a8b072f15a785330a"
+
+build:
+  stage: build
+  image: "$BUILD_IMAGE"
+  script:
+    - go build -trimpath ./...
+
+test:
+  stage: test
+  image: "$BUILD_IMAGE"
+  script:
+    - |
+      mkdir -p /tmp/apimgr
+      COVDIR=$(mktemp -d /tmp/apimgr/anime-XXXXXX)
+      trap 'rm -rf "$COVDIR"' EXIT
+      go vet ./...
+      go test -timeout 5m -covermode=atomic -coverprofile="$COVDIR/coverage.out" ./...
+      go tool cover -func="$COVDIR/coverage.out"
+      coverage=$(go tool cover -func="$COVDIR/coverage.out" | awk '/^total:/ {gsub(/%/, "", $3); print $3}')
+      awk -v coverage="$coverage" 'BEGIN { if (coverage+0 < 60) exit 1 }'
+
+secret-scan:
+  stage: security
+  image: trufflesecurity/trufflehog@sha256:8fd07ea46a3f59583c4d50f006d8cf150530141b28969c3c34cc455cb9165a6b
+  variables:
+    GIT_DEPTH: "0"
+  script:
+    - trufflehog git file://. --results=verified --exclude-paths=.github/trufflehog-exclude.txt --fail
+
+workflow-policy:
+  stage: security
+  image: "$BUILD_IMAGE"
+  script:
+    - |
+      if grep -RnE 'pull_request_target' .github/ .gitea/ .forgejo/ --exclude=ci.yml 2>/dev/null; then
+        echo 'ERROR: pull_request_target is forbidden'
+        exit 1
+      fi
+      bad=$(grep -RnE '^[[:space:]]*uses:' .github/ .gitea/ .forgejo/ 2>/dev/null | grep -vE '@[0-9a-f]{40}([[:space:]]|$)' || true)
+      if [ -n "$bad" ]; then
+        printf '%s\n' "$bad"
+        exit 1
+      fi
+
+image-scan:
+  stage: security
+  image: aquasec/trivy:0.70.0@sha256:be1190afcb28352bfddc4ddeb71470835d16462af68d310f9f4bca710961a41e
+  needs:
+    - image-build
+  variables:
+    TRIVY_USERNAME: "$CI_REGISTRY_USER"
+    TRIVY_PASSWORD: "$CI_REGISTRY_PASSWORD"
+  script:
+    - trivy image --exit-code 1 --severity CRITICAL,HIGH "$CI_REGISTRY_IMAGE:ci-$CI_COMMIT_SHA"
+
+image-build:
+  stage: build
+  image: docker@sha256:851f91d241214e7c6db86513b270d58776379aacc5eb9c4a87e5b47115e3065c
+  services:
+    - name: docker@sha256:aa3df78ecf320f5fafdce71c659f1629e96e9de0968305fe1de670e0ca9176ce
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - test -n "$CI_REGISTRY_IMAGE"
+    - printf '%s' "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" --username "$CI_REGISTRY_USER" --password-stdin
+    - docker build -t "$CI_REGISTRY_IMAGE:ci-$CI_COMMIT_SHA" -f docker/Dockerfile .
+    - docker push "$CI_REGISTRY_IMAGE:ci-$CI_COMMIT_SHA"
+
+vuln-scan:
+  stage: security
+  image: "$BUILD_IMAGE"
+  script:
+    - govulncheck ./...
+
+release:
+  stage: release
+  image: "$BUILD_IMAGE"
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  script:
+    - mkdir -p releases
+    - |
+      VERSION=${CI_COMMIT_TAG#v}
+      for platform in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64 freebsd/amd64 freebsd/arm64; do
+        GOOS=${platform%/*}
+        GOARCH=${platform#*/}
+        EXT=
+        if [ "$GOOS" = windows ]; then EXT=.exe; fi
+        CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -trimpath -ldflags "-s -w -X main.Version=$VERSION" -o "releases/anime-$GOOS-$GOARCH$EXT" ./src
+        CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build -trimpath -ldflags "-s -w -X main.Version=$VERSION" -o "releases/anime-cli-$GOOS-$GOARCH$EXT" ./src/client
+      done
+      printf '%s\n' "$VERSION" > releases/version.txt
+      tar --exclude=.git --exclude=.github --exclude=.gitea --exclude=.forgejo --exclude=releases --exclude='*.tar.gz' -czf "releases/anime-$VERSION-source.tar.gz" .
+      cyclonedx-gomod mod -json -output "releases/anime-$VERSION-sbom.cdx.json"
+      (cd releases && sha256sum * > sha256.txt && sha512sum * > sha512.txt)
+  artifacts:
+    expire_in: never
+    paths:
+      - releases/
+  release:
+    tag_name: "$CI_COMMIT_TAG"
+    name: "Anime $CI_COMMIT_TAG"
+    description: "Release artifacts for Anime $CI_COMMIT_TAG."
+    assets:
+      links:
+        - name: Release artifacts
+          url: "$CI_JOB_URL/artifacts/download?job=release"

@@ -1,4 +1,4 @@
-name: anime-dev
+name: anime
 
 x-logging: &default-logging
   options:
@@ -16,12 +16,12 @@ services:
     logging: *default-logging
     environment:
       PORT: 80
-      ADDRESS: ::
+      LISTEN: "::"
       MODE: development
       DEBUG: "true"
       CONFIG_DIR: /config/anime
       DATA_DIR: /data/anime
-      LOGS_DIR: /data/log/anime
+      LOG_DIR: /data/log/anime
       TZ: ${TZ:-America/New_York}
       ENABLE_TOR: "true"
     volumes:
@@ -36,9 +36,9 @@ services:
       retries: 3
       start_period: 10m
     networks:
-      - anime-dev
+      - anime
 
 networks:
-  anime-dev:
-    name: anime-dev
+  anime:
+    name: anime
     external: false

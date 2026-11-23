@@ -15,6 +15,10 @@ import (
 
 func contentNegotiationMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isMCPRoute(r.URL.Path) || isFixedDiscoveryRoute(r.URL.Path) {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if !prefersPlainText(r.Header.Get("Accept")) {
 			next.ServeHTTP(w, r)
 			return
@@ -49,6 +53,14 @@ func contentNegotiationMiddleware(next http.Handler) http.Handler {
 		w.WriteHeader(recorder.status)
 		_, _ = w.Write(body)
 	})
+}
+
+func isFixedDiscoveryRoute(path string) bool {
+	return path == "/robots.txt" || path == "/sitemap.xml" || strings.HasPrefix(path, "/sitemap-") || path == "/feed.xml" || path == "/rss.xml" || path == "/.well-known/security.txt" || path == "/.well-known/llms.txt" || path == "/llms.txt" || strings.HasPrefix(path, "/locales/")
+}
+
+func isMCPRoute(path string) bool {
+	return path == "/mcp" || path == "/api/mcp" || path == "/api/v1/server/mcp"
 }
 
 type responseRecorder struct {
@@ -124,8 +136,7 @@ func appendPlainValue(output *strings.Builder, value interface{}, depth int, pre
 			appendPlainValue(output, item, depth+1, indent+"- ")
 		}
 	default:
-		output.WriteString(prefix)
-		output.WriteString(fmt.Sprint(typed))
+		_, _ = fmt.Fprint(output, prefix, typed)
 		output.WriteByte('\n')
 	}
 }

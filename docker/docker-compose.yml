@@ -16,10 +16,10 @@ services:
     logging: *default-logging
     environment:
       PORT: 80
-      ADDRESS: ::
+      LISTEN: "::"
       CONFIG_DIR: /config/anime
       DATA_DIR: /data/anime
-      LOGS_DIR: /data/log/anime
+      LOG_DIR: /data/log/anime
       TZ: ${TZ:-America/New_York}
       ENABLE_TOR: "true"
     volumes:

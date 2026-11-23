@@ -1,11 +1,11 @@
-{{define "content"}}
+{{define "home-content"}}
 <!-- Hero Section -->
 <div class="hero">
-    <h1>Anime Quotes API</h1>
-    <p>Discover wisdom and inspiration from your favorite anime characters. Get random quotes or browse the entire collection.</p>
+    <h1>{{.BrandingTitle}}</h1>
+    <p>{{if .BrandingTagline}}{{.BrandingTagline}}{{else}}{{t .Lang "home.hero_description"}}{{end}}</p>
     <div class="hero-actions">
-        <button id="get-quote-btn" class="btn btn-primary btn-lg" onclick="getRandomQuote()">Get Random Quote</button>
-        <a href="/quotes" class="btn btn-secondary btn-lg">View All Quotes</a>
+        <button id="get-quote-btn" class="btn btn-primary btn-lg" data-action="random-quote">{{t .Lang "home.get_random"}}</button>
+        <a href="/quotes" class="btn btn-secondary btn-lg">{{t .Lang "home.view_all"}}</a>
     </div>
 </div>
 
@@ -15,7 +15,7 @@
         {{if .Quote}}
             {{.Quote.Quote}}
         {{else}}
-            Click "Get Random Quote" to discover anime wisdom!
+            {{t .Lang "home.quote_prompt"}}
         {{end}}
     </div>
     <div class="quote-meta">
@@ -35,42 +35,42 @@
         </div>
     </div>
     {{if .Quote}}
-    <div style="margin-top: 32px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-        <button class="btn btn-secondary" onclick="copyQuote()">Copy Quote</button>
-        <button class="btn btn-primary" onclick="getRandomQuote()">Next Quote</button>
+    <div class="quote-actions">
+        <button class="btn btn-secondary" data-action="copy-quote">{{t .Lang "home.copy_quote"}}</button>
+        <button class="btn btn-primary" data-action="random-quote">{{t .Lang "home.next_quote"}}</button>
     </div>
     {{end}}
 </div>
 
 <!-- Stats Section -->
 <div class="admin-section">
-    <h2 class="admin-section-title">API Statistics</h2>
+    <h2 class="admin-section-title">{{t .Lang "home.statistics"}}</h2>
     <div class="stats-grid">
         <div class="card stats-card">
             <div class="stats-value">{{.TotalQuotes}}</div>
-            <div class="stats-label">Total Quotes</div>
+            <div class="stats-label">{{t .Lang "home.total_quotes"}}</div>
         </div>
         <div class="card stats-card">
             <div class="stats-value">∞</div>
-            <div class="stats-label">Inspiration</div>
+            <div class="stats-label">{{t .Lang "home.inspiration"}}</div>
         </div>
         <div class="card stats-card">
             <div class="stats-value">100%</div>
-            <div class="stats-label">Free & Open</div>
+            <div class="stats-label">{{t .Lang "home.free_open"}}</div>
         </div>
     </div>
 </div>
 
 <!-- Features Section -->
 <div class="admin-section">
-    <h2 class="admin-section-title">API Features</h2>
+    <h2 class="admin-section-title">{{t .Lang "home.features"}}</h2>
     <div class="features-grid">
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">🎲 Random Quotes</h3>
+                <h3 class="card-title">🎲 {{t .Lang "home.random_quotes"}}</h3>
             </div>
             <div class="card-body">
-                <p>Get a random anime quote with a single API call. Perfect for inspiration, wallpapers, or daily motivation.</p>
+                <p>{{t .Lang "home.random_quotes_description"}}</p>
             </div>
             <div class="card-footer">
                 <code>GET /api/v1/random</code>
@@ -79,10 +79,10 @@
 
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">📚 All Quotes</h3>
+                <h3 class="card-title">📚 {{t .Lang "home.all_quotes"}}</h3>
             </div>
             <div class="card-body">
-                <p>Access the complete collection of anime quotes. Browse, search, and filter through all available quotes.</p>
+                <p>{{t .Lang "home.all_quotes_description"}}</p>
             </div>
             <div class="card-footer">
                 <code>GET /api/v1/quotes</code>
@@ -91,10 +91,10 @@
 
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">❤️ Health Check</h3>
+                <h3 class="card-title">❤️ {{t .Lang "home.health_check"}}</h3>
             </div>
             <div class="card-body">
-                <p>Monitor API status and uptime. Get real-time health information and service statistics.</p>
+                <p>{{t .Lang "home.health_check_description"}}</p>
             </div>
             <div class="card-footer">
                 <code>GET /api/v1/server/healthz</code>
@@ -102,37 +102,31 @@
         </div>
 
         <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">⚡ Fast & Reliable</h3>
-            </div>
-            <div class="card-body">
-                <p>Built with Go for blazing-fast performance. No rate limits, no authentication required for public endpoints.</p>
-            </div>
-            <div class="card-footer">
-                <span class="badge badge-success">Open Source</span>
-            </div>
+            <div class="card-header"><h3 class="card-title">🔓 {{t .Lang "home.public_read_only"}}</h3></div>
+            <div class="card-body"><p>{{t .Lang "home.public_read_only_description"}}</p></div>
+            <div class="card-footer"><span class="badge badge-success">{{t .Lang "home.open_source"}}</span></div>
         </div>
     </div>
 </div>
 
 <!-- API Usage Examples -->
 <div class="admin-section">
-    <h2 class="admin-section-title">Quick Start</h2>
+    <h2 class="admin-section-title">{{t .Lang "home.quick_start"}}</h2>
     <div class="card">
         <div class="card-header">
-            <h3 class="card-title">API Usage Examples</h3>
+            <h3 class="card-title">{{t .Lang "home.api_examples"}}</h3>
         </div>
         <div class="card-body">
-            <h4 style="margin-bottom: 16px; color: var(--text-primary);">Get a random quote:</h4>
+            <h4 class="quick-start-heading">{{t .Lang "home.example_random"}}</h4>
             <pre><code>curl http://{{.ServerURL}}/api/v1/random</code></pre>
 
-            <h4 style="margin-top: 24px; margin-bottom: 16px; color: var(--text-primary);">Get all quotes:</h4>
+            <h4 class="quick-start-heading">{{t .Lang "home.example_all"}}</h4>
             <pre><code>curl http://{{.ServerURL}}/api/v1/quotes</code></pre>
 
-            <h4 style="margin-top: 24px; margin-bottom: 16px; color: var(--text-primary);">Check API health:</h4>
+            <h4 class="quick-start-heading">{{t .Lang "home.example_health"}}</h4>
             <pre><code>curl http://{{.ServerURL}}/api/v1/server/healthz</code></pre>
 
-            <h4 style="margin-top: 24px; margin-bottom: 16px; color: var(--text-primary);">Example Response:</h4>
+            <h4 class="quick-start-heading">{{t .Lang "home.example_response"}}</h4>
             <pre><code>{
   "anime": "Naruto",
   "character": "Naruto Uzumaki",
@@ -142,15 +136,4 @@
     </div>
 </div>
 
-<!-- Initialize Quote Display -->
-<script>
-// Display initial quote if available
-document.addEventListener('DOMContentLoaded', () => {
-    const quoteText = document.getElementById('quote-text').textContent.trim();
-    if (!quoteText || quoteText === 'Click "Get Random Quote" to discover anime wisdom!') {
-        // No initial quote, fetch one
-        getRandomQuote();
-    }
-});
-</script>
 {{end}}
