@@ -71,7 +71,7 @@ The quote collection is embedded in the binary and is not stored in the runtime 
 | Quote dataset (embedded at build) | Fully trusted | Static, embedded at compile time |
 | Incoming HTTP requests | **Untrusted** | All query parameters validated |
 
-Normal quote and health requests do not call external services. The explicit `--update` command and CLI discovery/download endpoints consult GitHub Releases; client metadata is cached in memory for five minutes, and downloads are checksum-verified by the CLI. Configured SMTP, CAPTCHA, webhook, and PGP keyserver integrations are external trust boundaries; failures must not expose submitted report contents or credentials.
+Normal quote and health requests do not call external services. The explicit server `--update` command may check GitHub Releases. CLI discovery reads operator-provisioned local release assets from the server and CLI downloads are checksum-verified; the server does not fetch CLI binaries from GitHub. Configured SMTP, CAPTCHA, webhook, and PGP keyserver integrations are external trust boundaries; failures must not expose submitted report contents or credentials.
 
 ### Threat model & abuse cases
 
@@ -136,7 +136,7 @@ Public quote and informational data routes are read-only. Owner-token issuance a
 | GET | `/api/v1/server/healthz.txt` | None | Return health status as plain text; HTTP 503 indicates unhealthy status. |
 | GET | `/api/{healthz,swagger}` | None | Compatibility aliases for health JSON and the OpenAPI document. |
 | GET, POST | `/api/graphql` and `/graphql` | None | Compatibility aliases for the read-only GraphQL endpoint. |
-| GET | `/api/autodiscover` | None | Return release metadata used by the CLI to discover client downloads. |
-| GET | `/cli/binaries/{file}` | None | Serve a supported CLI release artifact discovered through the update service; downloads are checksum-verified by the client. |
+| GET | `/api/autodiscover` | None | Return metadata and checksums for operator-provisioned local CLI release assets. |
+| GET | `/cli/binaries/{file}` | None | Serve a supported CLI release artifact from the configured local asset directory; downloads are checksum-verified by the client. |
 
 The browser pages are `/`, `/quotes`, `/server/about`, `/server/help`, `/server/help/mcp`, `/server/healthz`, `/server/preferences`, `/server/preferences/sync`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security`, `/server/security/policy`, `/server/security/thanks`, `/server/docs/swagger`, and `/server/docs/graphql`. `/server/preferences/sync` exports preferences; `/server/preferences/sync/import` is an action route that applies valid values and redirects. `/server` redirects to `/server/about`. Static/PWA routes are `/static/*`, `/robots.txt`, `/security.txt`, `/.well-known/security.txt`, `/manifest.json`, and `/sw.js`.

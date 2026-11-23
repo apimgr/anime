@@ -115,11 +115,12 @@ make local
 make build
 ```
 
-The Makefile builds server and CLI binaries for Linux, macOS, Windows, and FreeBSD on amd64 and arm64. Integration scripts in `tests/` cover binary and HTTP behavior:
+The Makefile builds server and CLI binaries for Linux, macOS, Windows, and FreeBSD on amd64 and arm64. `tests/run_tests.sh` runs the Docker-only basic tier for binary, HTTP, and CLI checks, including help output after renaming both binaries. It exits with status 69 when Docker is unavailable. `tests/test_content_negotiation.sh` separately checks public HTML, API (including `/api/autodiscover`), and fixed discovery routes. Incus service lifecycle and browser E2E checks are separate manual tiers:
 
 ```sh
 ./tests/run_tests.sh
 ./tests/docker.sh
+./tests/test_content_negotiation.sh
 ./tests/incus.sh
 ./tests/e2e.sh
 ```
@@ -132,7 +133,7 @@ This software is provided "as is" without warranty of any kind. Use it at your o
 
 - **No Warranty:** The authors are not responsible for damages, data loss, or issues arising from use of the software.
 - **Third-Party Content:** Quote text remains the property of its respective rights holders.
-- **Third-Party Services:** The explicit update command and CLI release discovery use GitHub Releases and are subject to its terms.
+- **Third-Party Services:** The server self-update command uses GitHub Releases and is subject to its terms. CLI update artifacts are provisioned by the operator or deployment package.
 - **Security:** No software is guaranteed to be free of vulnerabilities.
 - **Production Use:** Evaluate the software and configure the service for your deployment before production use.
 

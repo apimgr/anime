@@ -47,18 +47,121 @@ Default directories are selected by the application. Override them with `--confi
 | `web.llms.enabled`, `.include_endpoints`, `.include_schemas`, `.custom_sections` | `yaml.d/web.yml` | LLM discovery output |
 | `server.update.branch`, `.auto_install`, `.defer_days`, `.cli_min_version` | `yaml.d/maintenance.yml` | Release channel and update behavior |
 
+## GeoIP country policy
+
+GeoIP is a fail-open request risk signal. The server downloads the ASN, country,
+and IPv4/IPv6 city MMDB files from `sapics/ip-location-db` into
+`{data_dir}/security/geoip` and verifies each upstream SHA-256 checksum before
+replacing a database. Private and internal addresses are not looked up. Missing
+data never blocks requests; country policies are only applied when the lookup
+returns a country code. `allow_countries` takes precedence over
+`deny_countries`, and `server.security.allowlist` bypasses the country decision.
+Presets are operator-authored reusable lists and are never enforced by name.
+
+```yaml
+server:
+  geoip:
+    enabled: true
+    deny_countries: []
+    allow_countries: []
+    presets: {}
+```
+
+## Internal metrics
+
+Metrics are disabled from public discovery and every service route requires its
+own bearer token from `secrets.yml`. The tokens are generated during config
+initialization. Configure firewall or proxy access separately; setting
+`allow_unauthenticated` is suitable only on an isolated monitoring network.
+
+```yaml
+server:
+  metrics:
+    enabled: true
+    root:
+      enabled: true
+    auth:
+      allow_unauthenticated: false
+    include_system: true
+    include_runtime: true
+    loki:
+      max_entries: 1000
+      max_age: 1h
+```
+
+The Prometheus service is available at `/server/metrics` and
+`/server/metrics/prometheus`; Grafana dashboard JSON is at
+`/server/metrics/grafana`, and sanitized recent HTTP access streams are at
+`/server/metrics/loki`. Equivalent API aliases are `/api/v1/server/metrics`,
+`/api/metrics`, and `/metrics` when the root alias is enabled. Send the matching
+service token only as `Authorization: Bearer <token>`.
+
+## Backup and restore
+
+`--maintenance backup [file]` creates a full configuration archive, including
+the local database when present, with a
+`manifest.json`, per-file SHA-256 values, and immediate extraction verification.
+Only `server.db` is included from the data directory by default. Use
+`--maintenance backup --include-data` to include other data files and
+`--maintenance backup --include-ssl` to include the config SSL directory.
+When `server.backup.encryption_password` exists in `secrets.yml`, the archive is
+encrypted with AES-256-GCM using an Argon2id-derived key and receives an `.enc`
+suffix. Backups do not prompt for a password. If any `server.compliance`
+standard is enabled, an unset password blocks backup creation.
+
+`--maintenance restore <file>` stages and verifies the archive before copying
+files into configured directories. It rejects path traversal, symbolic links,
+special files, excessive archive expansion, and corrupt SQLite databases.
+Encrypted restores prompt for the backup password; existing installations
+also require root confirmation or the operator token. Legacy unencrypted
+tar.gz archives are accepted through the same bounded extractor.
+
+```yaml
+server:
+  backup:
+    encryption:
+      enabled: false
+    retention:
+      max_backups: 1
+      keep_weekly: 0
+      keep_monthly: 0
+      keep_yearly: 0
+      max_total_size: "10%"
+  restore:
+    max_archive_size: "1G"
+    max_expanded_size: "4G"
+    max_files: 10000
+    max_file_size: "512M"
+    max_ratio: 100
+  compliance:
+    gdpr: false
+    ccpa: false
+    hipaa: false
+    soc2: false
+```
+| `server.scheduler.timezone`, `.catch_up_window`, `.tasks` | `yaml.d/maintenance.yml` | Built-in task schedules and retry settings |
+| `server.backup.*`, `server.restore.*` | `yaml.d/maintenance.yml` | Backup retention, encryption, and restore limits |
+| `server.geoip.*` | `yaml.d/security.yml` | GeoIP enablement and operator-authored country policies |
+| `server.metrics.*` | `yaml.d/metrics.yml` | Authenticated Prometheus, Grafana, and Loki endpoints |
+
 ## Complete server settings index
 
 The following list covers the server configuration fields. A field's YAML area is shown in the preceding file table; legacy values are accepted during migration from `server.yml` and then written to their assigned area. Secret values are loaded from `secrets.yml` last.
 
 | YAML key or key group | Fields and behavior |
 |---|---|
-| `server` | `port`, `address`, `fqdn`, `baseurl`, and `mode` set the listener and public identity. `update.branch`, `update.auto_install`, `update.defer_days`, and `update.cli_min_version` control updates. `schedule.enabled` and `schedule.notifications` control in-process scheduled work. `metrics.enabled`, `metrics.endpoint`, `metrics.include_system`, and `metrics.include_app` control the metrics endpoint and exported measurements. `logging.access_format` and `logging.level` set access-log format and verbosity. |
+| `server` | `port`, `address`, `fqdn`, `baseurl`, and `mode` set the listener and public identity. `update.branch`, `update.auto_install`, `update.defer_days`, and `update.cli_min_version` control updates. `scheduler.timezone`, `scheduler.catch_up_window`, and `scheduler.tasks.*` describe scheduled task policy. `metrics.enabled`, `metrics.root.enabled`, `metrics.auth.allow_unauthenticated`, `metrics.auth.tokens.*`, `metrics.include_system`, `metrics.include_runtime`, and `metrics.loki.*` configure authenticated monitoring. Metrics service tokens are generated into `secrets.yml`. `logging.access_format` and `logging.level` set access-log format and verbosity. |
 | `server.database` | `driver`, `url`, and `pool.max_open`, `pool.max_idle`, `pool.max_lifetime`, `pool.max_idle_time` select SQLite/libSQL and connection-pool limits. |
 | `server.i18n` | `default_language` and `available_languages` define the server locale fallback and enabled language set. The bundled catalogs currently support `en`, `es`, `fr`, `de`, `it`, and `ar`. |
 | `server.rate_limit` | `read.requests`, `read.window`, `strict.requests`, and `strict.window` define the normal and sensitive-operation request limits. Windows are seconds. |
 | `server.tokens` | `max_linked`, `cookie_max_age`, and `idle_purge_days` cap linked tokens, set the owner-cookie lifetime, and configure idle-owner cleanup. |
 | `server.security` | `encryption_key` and `encryption_key_version` protect encrypted report data and key rotation. `reports.retention_days` controls closed security-report retention. Put the encryption key in `secrets.yml`. |
+| `server.security.allowlist` | IP addresses and CIDR ranges that bypass the GeoIP country decision. |
+| `server.geoip` | `enabled`, `deny_countries`, `allow_countries`, and named `presets` configure the fail-open country risk signal. Empty country lists allow all countries. `allow_countries` takes precedence when both lists are set. |
+| `server.metrics` | `enabled`, `root.enabled`, `auth.allow_unauthenticated`, `include_system`, `include_runtime`, and `loki.max_entries/max_age` configure internal metrics. The `prometheus`, `grafana`, and `loki` bearer tokens are generated and stored in `secrets.yml`. |
+| `server.scheduler` | `timezone`, `catch_up_window`, and `tasks.<name>.schedule/enabled/retry_on_fail/retry_delay` configure the in-process scheduler. |
+| `server.tor` | Tor binary and hidden-service resource, bootstrap, network, and bandwidth settings. Tor starts automatically when a Tor binary is available; there is no enable toggle. |
+| `server.i2p` | I2P provider and eepsite settings. I2P is opt-in outside containers and defaults on in a container. `I2P_ENABLED` and `--i2p` override the configured setting; `--i2p=false` disables it. |
 | `server.pages.contact` | `enabled`, `captcha`, `captcha_site_key`, `captcha_secret_key`, and `success_message` control the public report form and CAPTCHA. `antispam.honeypot`, `min_fill_seconds`, `max_age_seconds`, `per_ip`, `per_email`, `global`, `window`, `max_links`, `reject_markup`, `blocked_words`, `blocked_email_domains`, `strikes`, `ban_hours`, `review_min_seconds`, `review_max_seconds`, and `duplicate_window_hours` control validation and abuse limits. Put the CAPTCHA secret in `secrets.yml`. |
 | `server.contact` | `dpo.name`, `dpo.email`, and the `general`, `abuse`, `admin`, and `security` destination `email` values configure report routing. Each destination supports `webhooks.telegram`, `webhooks.discord`, `webhooks.slack`, and `webhooks.generic` URL fields. |
 | `server.notifications.email` | `smtp.host`, `smtp.port`, `smtp.username`, `smtp.password`, `smtp.tls`, `from.name`, and `from.email` configure mail delivery. Passwords belong in `secrets.yml`; supported `SMTP_*` environment variables override the corresponding SMTP values. |
@@ -75,6 +178,25 @@ The following list covers the server configuration fields. A field's YAML area i
 | `web-llms` | `enabled`, `include_endpoints`, `include_schemas`, and `custom_sections[]` control `/llms.txt` output. |
 
 Configuration values are validated at load time; invalid values use their documented defaults and are logged. Not every field is safe to expose to the environment: use the file merge order and secret handling above for credentials.
+
+## Scheduler
+
+The scheduler always runs in-process and stores task state and execution history
+in `server.db`. Calendar schedules use the IANA timezone configured by
+`server.scheduler.timezone`; supported schedules are five-field cron,
+`@hourly`, `@daily`, `@weekly`, `@monthly`, and `@every` durations. Operators
+can inspect and manage persisted tasks with
+`--maintenance scheduler list|show|run|enable|disable|history`.
+
+## Tor and I2P overlays
+
+The server owns separate loopback HTTP listeners for Tor and I2P. Tor starts
+when its binary is available and otherwise remains disabled. I2P uses a
+dedicated `i2pd` process when installed, or a loopback SAM bridge when enabled.
+The Tor listener consumes PROXY protocol; the I2P listener is plain HTTP. Their
+health and published addresses are shown on `/server/healthz` and the server
+status page. Configure I2P at `server.i2p`; Tor and I2P data/config paths are
+derived from the application directories.
 
 ## Branding and page content
 

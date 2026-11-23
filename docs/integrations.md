@@ -5,7 +5,7 @@
 - REST API and OpenAPI JSON: `/api/v1/server/swagger` (`/api/swagger` alias); see [API reference](api.md).
 - Read-only GraphQL: `/api/v1/server/graphql` (`/api/graphql` and `/graphql` aliases).
 - MCP Streamable HTTP: `/api/v1/server/mcp` (`/api/mcp` and `/mcp` aliases). Each request requires an owner Bearer token. The guide at `/server/help/mcp` describes supported clients and tools.
-- CLI discovery: `/api/autodiscover` reports supported release metadata; `/cli/binaries/{file}` serves a supported CLI artifact. The CLI verifies the artifact checksum.
+- CLI discovery: `/api/autodiscover` reports `cli_versions` and `cli_min_version` in the standard `ok`/`data` envelope; `/cli/binaries/{file}` serves a supported CLI artifact. The CLI checks discovery on each invocation, downloads updates over HTTPS, verifies SHA-256, atomically replaces its executable, and restarts it. Use `anime-cli --update check` to check explicitly or `anime-cli --update yes` to install.
 - Contact and security reporting: `/api/v1/server/contact` and `/api/v1/server/security`; see [Security](security.md).
 
 ## Discovery files
@@ -25,6 +25,6 @@ The canonical security file is `/.well-known/security.txt`; `/security.txt` is n
 
 ## External services
 
-No identity provider, payment service, or runtime quote source is enabled. Quotes are embedded in the server binary. The explicit server update command and the CLI discovery/download routes use GitHub Releases; normal quote and health requests do not call GitHub.
+No identity provider, payment service, or runtime quote source is enabled. Quotes are embedded in the server binary. The explicit server update command uses GitHub Releases. CLI discovery and downloads use assets provisioned by the operator (or image/package build) in `{data_dir}/cli` by default; the server does not fetch CLI releases. Normal quote and health requests do not call GitHub.
 
 The production Docker Compose deployment can expose an optional Tor hidden service. Its address appears on `/server/help` after Tor publishes it. Set `ENABLE_TOR=false` to disable the service.

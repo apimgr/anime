@@ -1,12 +1,83 @@
 # Development
 
-The project uses Go under `src/`. Follow the repository's `AI.md` and `IDEA.md` as the implementation and product specifications. Build and validate Go code through Makefile targets using the `casjaysdev/go:latest` container. CI workflows are maintained for GitHub Actions, GitLab CI, Gitea Actions, Forgejo Actions, and Jenkins; Go jobs use the maintained Go toolchain image without an in-repository build image.
+Anime Quotes is a Go application. Read [AI.md](../AI.md) for implementation rules and [IDEA.md](../IDEA.md) for product requirements before changing code. Go builds and tests run in the repository's `casjaysdev/go:latest` Docker toolchain through the Makefile; do not install or run Go directly on the host.
+
+## Prerequisites
+
+- Git
+- GNU Make
+- Docker with permission to run containers
+- Docker when building the documentation
+- Incus only for the optional full application test tier
+
+## Local workflow
+
+Clone the repository and enter its directory:
 
 ```sh
-make dev
-make test
-make local
-make build
+git clone https://github.com/apimgr/anime.git
+cd anime
 ```
 
-Tests must keep runtime data in an OS temporary directory. Do not use production or development compose files for AI validation; use the dedicated test workflow from the primary session. CI builds use the Go container directly rather than the Makefile.
+Use the Makefile for Go tasks:
+
+```sh
+make dev       # quick server and CLI build in an OS temporary directory
+make test      # go vet, govulncheck, unit tests and the 60% coverage gate
+make local     # production-style server and CLI binaries for the host platform
+make build     # local binaries plus all supported OS and architecture builds
+make clean     # remove binaries/ and releases/
+```
+
+Runtime and test data belongs in an OS temporary directory. Do not use the production or development Compose files for automated testing. CI uses explicit Go commands in the maintained toolchain container and does not call Makefile targets. CI definitions are maintained for GitHub Actions, Gitea Actions, Forgejo Actions, GitLab CI, and Jenkins; the GitHub workflows run for this repository's GitHub remote.
+
+## Integration and browser testing
+
+The basic binary and HTTP checks are Docker-only:
+
+```sh
+./tests/run_tests.sh
+./tests/docker.sh
+./tests/test_content_negotiation.sh
+```
+
+`run_tests.sh` delegates only to the Docker basic tier; it never falls back to Incus. If Docker is unavailable, it reports the missing prerequisite and exits with status 69. Other test scripts use the shared prerequisite check, which also reports a missing command and exits with status 69. The Docker tier checks both server and CLI version/help output, then copies each binary under a renamed filename and verifies the renamed name appears in its help output. The content-negotiation script separately checks the public HTML, API (including `/api/autodiscover`), and fixed discovery routes with their supported response formats.
+
+The Incus service lifecycle checks are explicit manual runs, separate from the Docker basic tier:
+
+```sh
+./tests/incus.sh systemd
+./tests/incus.sh openrc
+./tests/incus.sh all
+```
+
+The on-demand headless browser suite covers server-rendered, no-JavaScript, and JavaScript-enabled flows. It is a separate manual tier and is not started by `run_tests.sh`, `make test`, or the commit gate:
+
+```sh
+./tests/e2e.sh
+```
+
+Use only the test environments described by AI.md. Do not start `docker/docker-compose.yml` or `docker/docker-compose.dev.yml` during automated testing.
+
+## Documentation
+
+Build the Read the Docs site in a disposable Docker container. This keeps Python packages and generated site files out of the host and repository:
+
+```sh
+mkdir -p "${TMPDIR:-/tmp}/apimgr"
+DOCS_TMP=$(mktemp -d "${TMPDIR:-/tmp}/apimgr/anime-docs-XXXXXX")
+mkdir -p "$DOCS_TMP/site"
+DOCS_NAME="anime-docs-$(basename "$DOCS_TMP" | cut -d- -f3)"
+trap 'rm -rf "$DOCS_TMP"' EXIT
+docker run --rm --name "$DOCS_NAME" --no-healthcheck \
+  -v "$PWD:/src:ro" -v "$DOCS_TMP/site:/site" -w /src python:3.12-alpine \
+  sh -ec 'python -m pip install --no-cache-dir -r docs/requirements.txt && mkdocs build --strict --site-dir /site'
+```
+
+Update the relevant docs when changing routes, configuration, user workflows, CLI behavior, translations, or deployment. Check locale catalogs for matching keys when adding translated text.
+
+## Code and pull requests
+
+Keep changes focused, add or update tests for behavior changes, and update documentation in the same change. Use descriptive branches and pull requests against the default branch. Include the reason for the change, the checks run, any configuration or documentation updates, and security or privacy impact in the pull request description. Do not include credentials or private data in code, tests, documentation, or logs.
+
+Report suspected vulnerabilities through [GitHub private vulnerability reporting](https://github.com/apimgr/anime/security/advisories/new), not a public issue. See [Security](security.md) for the application's reporting routes and response process.
