@@ -3,9 +3,9 @@
 The companion `anime-cli` binary reads only from the public API.
 
 ```sh
-anime-cli --server https://anime.example random
-anime-cli --server https://anime.example list
-anime-cli --server https://anime.example search "fullmetal alchemist"
+anime-cli --server https://YOUR_SERVER random
+anime-cli --server https://YOUR_SERVER list
+anime-cli --server https://YOUR_SERVER search "fullmetal alchemist"
 ```
 
 `--server URL` overrides `ANIME_SERVER_PRIMARY`, which overrides `server.primary` in the user-scoped `cli.yml`. Use `--config PROFILE` to select a named profile (`PROFILE.yml`) or an explicit YAML path. First run creates user-only config/data/cache/log directories and a 0600 config file. With no command and no configured server, an interactive terminal prompts for the server URL, tests `/api/v1/server/healthz`, and saves a working URL before opening the quote browser TUI. Enter `q` to cancel. A no-command invocation without a terminal still requires a configured server. The TUI is enabled by default and can be disabled with `tui.enabled: false`; its theme comes from `tui.theme` (`dark`, `light`, or `system`).
