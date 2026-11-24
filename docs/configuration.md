@@ -306,6 +306,9 @@ Operator-authored page content is optional and uses `server.branding.content`:
 server:
   branding:
     content:
+      header:
+        format: html
+        body: '<span>Operator notice</span>'
       about:
         format: md
         body:
@@ -322,7 +325,7 @@ server:
         body: '<p>Powered by <strong>Example</strong></p>'
 ```
 
-`header` and `footer` accept sanitized HTML only. `about`, `privacy`, and `terms` accept `md`, `html`, or `txt`; Markdown and HTML are sanitized before rendering. A localized `body` map selects the current language, then `default`; a plain string applies to every language. Each body is limited to 256 KiB. Operator content cannot link to `/server/contact`. About, privacy, and terms content extends the built-in page, except terms content replaces the built-in terms. The footer entry replaces only its branding block; the shared application footer remains.
+`header` and `footer` accept sanitized HTML only and appear on every server-rendered page, including preferences and error pages. `about`, `privacy`, and `terms` accept `md`, `html`, or `txt`; Markdown and HTML are sanitized before rendering. A localized `body` map selects the current language, then `default`; a plain string applies to every language. Each body is limited to 256 KiB. Operator content cannot link to `/server/contact`. About, privacy, and terms content extends the built-in page, except terms content replaces the built-in terms. The footer entry replaces only its branding block; the shared application footer remains.
 
 Privacy and consent settings live in `yaml.d/privacy.yml` under `server.privacy`. `data.sold` controls the privacy notice, consent wording, and CCPA opt-out controls. The same area holds data-sharing descriptions, retention text, cookie categories, consent-banner placement and labels, and manually declared third-party services. Essential cookies are always enabled. Consent messages and labels fall back to built-in translations when their configured values are empty or equal to the built-in English defaults.
 

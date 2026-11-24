@@ -26,4 +26,23 @@ Catalogs live at `src/common/i18n/locales/{language}.json` and are embedded in t
 5. Update tests and user-facing documentation when the supported set or behavior changes.
 6. Use AI translations for every supported locale and welcome human corrections through the normal contribution flow. Native-speaker review is welcome but is not a merge requirement; preserve the established terminology, context, accessibility meaning, and legal meaning when correcting text.
 
+## Product glossary
+
+Use these terms consistently across the interface, CLI, email, and documentation. Translate the concept for each locale; keep route names, API fields, and configuration keys unchanged.
+
+| English term | Meaning and translation guidance |
+|---|---|
+| Anime Quotes API | Product name. Keep the brand name unchanged. |
+| owner token | A credential that controls an owner's account and linked API tokens. Do not call it a password. |
+| linked token | An API credential created under an owner account. Keep it distinct from the owner token. |
+| token prefix | The visible identifier used to recognize a token; it is not the secret token value. |
+| rotate a token | Replace a credential and revoke the previous credential. |
+| revoke a token | Disable a credential so it can no longer authenticate. |
+| preference sync | Transfer the supported preferences between this service and a client. |
+| security report | A report about a security event or finding; preserve the distinction from an audit record. |
+| disclosure | A security disclosure submitted through the published reporting process. |
+| rate limit | A policy that limits request frequency. Keep the term distinct from account or token quotas. |
+| backup | A restorable copy of application data and configuration. |
+| restore | Recover application data from a backup. |
+
 Translate all human-readable application strings: web pages, validation and API errors, OpenAPI and GraphQL descriptions, email content, health/status output, consent controls, server and client CLI help and messages, startup banners, and setup prompts. Do not put runtime translations in a second locale directory or fetch locale files from the host filesystem.

@@ -48,9 +48,9 @@ The service starts as root on Unix so the application can apply a staged self-up
 Manual starts run in the foreground by default. Use `anime --daemon` or set
 `server.daemonize: true` for a detached manual start. Service starts and
 application containers always remain in the foreground. On Unix, a PID file
-is checked and created by default outside containers; set
-`server.pidfile: false` to disable it or use `--pid`/`PID_FILE` to choose its
-path.
+is checked and created by default outside containers. Set
+`server.pidfile: false` to disable PID-file checks and creation; while PID files
+are enabled, `--pid` or `PID_FILE` chooses their path.
 
 ### Updates
 
