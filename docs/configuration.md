@@ -42,6 +42,7 @@ Branding, SEO, theme, notification delivery and preferences, rate and security r
 |---|---|---|
 | `server.port`, `server.address`, `server.fqdn`, `server.mode`, `server.baseurl` | `server.yml` | Listen endpoint, public identity, operating mode, and path prefix |
 | `server.database.driver`, `.url`, `.pool.*` | `server.yml` | SQLite or libSQL connection and pool |
+| `server.cache.type`, `.url`, `.host`, `.port`, `.tls*`, `.pool_size`, `.min_idle`, `.timeout`, `.prefix`, `.ttl` | `server.yml` | In-process cache or external Valkey/Redis; credentials are stored in `secrets.yml` |
 | `server.tokens.max_linked`, `.cookie_max_age`, `.idle_purge_days` | `yaml.d/security.yml` | Owner-token policy |
 | `server.rate_limit.read`, `.write`, `.health`, `.strict`, `.auth_failures`, `.global_burst` | `yaml.d/security.yml` | Sliding-window limits for requests, sensitive actions, and failed authentication |
 | `server.trusted_proxies.additional`, `.client_ip_header` | `server.yml` | Trusted proxy addresses/CIDRs/DNS names and the pinned or automatic client-IP header |
@@ -57,6 +58,33 @@ Branding, SEO, theme, notification delivery and preferences, rate and security r
 ### Trusted proxies
 
 Private, loopback, link-local, and the listen address's `/24` are trusted automatically. Add public proxy addresses, CIDRs, or DNS names under `server.trusted_proxies.additional`; DNS entries refresh every five minutes. Forwarded host, scheme, prefix, and client-IP headers are honored only when the immediate TCP peer is trusted. `client_ip_header: auto` checks the supported forwarding headers; setting a single header pins resolution to that header. Client IP is resolved right to left through the proxy chain and is used by rate limiting, GeoIP, blocklists, and audit logging.
+
+## Cache
+
+The cache supports `none`, `memory` (default), `valkey`, and `redis`. For an
+external service, configure either `server.cache.url` or the individual
+connection fields. Redis and Valkey URLs select the backend from their scheme;
+`rediss://` and `valkeys://` enable TLS. URL credentials and the separate
+`password` field are moved to `secrets.yml`. Configure the connection pool,
+timeout, prefix, TTL, and optional private CA/client certificate files under
+`server.cache` in `server.yml`.
+
+When an external cache becomes unavailable, request rate limits continue with
+an in-process sliding-window fallback and the public health response marks the
+cache `degraded`. The server logs one warning for the outage and does not fail
+open the limiter.
+
+```yaml
+server:
+  cache:
+    type: valkey
+    url: ${CACHE_URL}
+    pool_size: 10
+    min_idle: 2
+    timeout: 5s
+    prefix: "anime:"
+    ttl: 1h
+```
 
 ## GeoIP country policy
 
