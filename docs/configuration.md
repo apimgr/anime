@@ -256,3 +256,18 @@ Sensitive values belong in `secrets.yml`, including `server.token`, `server.secu
 ## CLI profiles
 
 The companion client reads a user-scoped `cli.yml` profile. Select a server with `--server`, `ANIME_SERVER_PRIMARY`, or the profile's `server.primary` value. Keep client configuration private and do not place credentials or private data in shared system directories. See [CLI reference](cli.md) for output, cache, logging, and shell integration options.
+## Security data updates
+
+Runtime security datasets live under `{data_dir}/security/`: blocklists, the
+NVD CVE index, the optional Trivy vulnerability database, and GeoIP databases.
+The scheduler refreshes blocklists and NVD daily. The built-in FireHOL IP list
+is always active; `server.security.blocklists.extra_sources` adds HTTPS IP or
+domain lists. Failed or invalid updates keep the last good directory active,
+and health reports missing or stale data as `error` or `degraded`.
+
+The NVD endpoint and optional OCI Trivy reference are configured under
+`data.cve.source` and `data.trivy`. Set `data.trivy.enabled: true` to enable
+Trivy downloads. Store the optional NVD API key under `data.cve.api_key` in
+`secrets.yml`; it is removed from the ordinary YAML configuration during
+secret migration. NVD requests are paged and rate limited; HTTP 403/429 errors
+are retried by the next scheduled run without preventing startup.
