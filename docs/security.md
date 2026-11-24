@@ -32,4 +32,4 @@ Backups include the PGP key material, installation secret, and report records. R
 
 ## Tor
 
-The production Docker Compose deployment enables a Tor hidden service by default. Its hostname is stored in the Tor data volume and shown on `/server/help` after the service is published. Set `ENABLE_TOR=false` to disable it.
+The application starts Tor when its binary is available and starts I2P according to `server.i2p.enabled`. Overlay hostnames are stored under the application data directory and shown on `/server/help` after publication.

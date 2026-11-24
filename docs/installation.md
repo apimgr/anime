@@ -9,7 +9,7 @@ docker compose -f docker/docker-compose.yml up -d
 ```
 
 The application listens on port 80 in the container.
-The production Compose file enables a Tor hidden service and persists its address in the mounted data volume. Once Tor publishes the address, `/server/help` displays it. Set `ENABLE_TOR=false` to disable Tor.
+The application starts Tor automatically when its binary is available and persists its address in the mounted data volume. I2P is enabled by default in container mode. Published overlay addresses and health appear on `/server/help`; configure I2P under `server.i2p`.
 
 ## Binary
 

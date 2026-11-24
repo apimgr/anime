@@ -27,4 +27,4 @@ The canonical security file is `/.well-known/security.txt`; `/security.txt` is n
 
 No identity provider, payment service, or runtime quote source is enabled. Quotes are embedded in the server binary. The explicit server update command uses GitHub Releases. CLI discovery and downloads use assets provisioned by the operator (or image/package build) in `{data_dir}/cli` by default; the server does not fetch CLI releases. Normal quote and health requests do not call GitHub.
 
-The production Docker Compose deployment can expose an optional Tor hidden service. Its address appears on `/server/help` after Tor publishes it. Set `ENABLE_TOR=false` to disable the service.
+The application starts Tor when its binary is available, and starts I2P according to `server.i2p.enabled` (enabled by default in container mode). Their addresses and health appear on `/server/help` after publication. Tor and I2P are managed by the application; there is no `ENABLE_TOR` toggle.

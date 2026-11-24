@@ -18,7 +18,7 @@ Anime Quotes is a full-stack Go application serving anime quotes from a curated,
 - Anonymous owner-token management for MCP access and separate linked tokens per client
 - Contact and security reporting with CAPTCHA, abuse controls, encrypted report storage, and OpenPGP support
 - Public discovery through `robots.txt`, `sitemap.xml`, Atom/RSS feeds, `llms.txt`, and canonical `security.txt`
-- Optional Tor hidden service in the production Docker Compose deployment
+- Application-managed Tor and I2P overlay support
 
 ## Production
 
@@ -30,7 +30,7 @@ Review `docker/docker-compose.yml`, especially its published port and volume pat
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-The service listens on port 80 in the container. Configuration, data, and logs are mounted under `/config/anime`, `/data/anime`, and `/data/log/anime`. The Compose file binds host port `64580` on the Docker bridge address. Tor is enabled in the production Compose configuration; its onion address is created in the Tor data volume and shown on `/server/help` after publication. Set `ENABLE_TOR=false` to disable Tor.
+The service listens on port 80 in the container. Configuration, data, and logs are mounted under `/config/anime`, `/data/anime`, and `/data/log/anime`. The Compose file binds host port `64580` on the Docker bridge address. The application starts Tor automatically when its binary is available; its onion address is shown on `/server/help` after publication. I2P is enabled by default in container mode and can be configured under `server.i2p`.
 
 ### Binary and systemd
 

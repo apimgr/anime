@@ -6,8 +6,7 @@ Anime Quotes is a Go application. Read [AI.md](../AI.md) for implementation rule
 
 - Git
 - GNU Make
-- Docker with permission to run containers
-- Docker when building the documentation
+- Docker with permission to run containers, including for the documentation build
 - Incus only for the optional full application test tier
 
 ## Local workflow
