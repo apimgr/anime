@@ -32,17 +32,18 @@ Prebuilt server and CLI artifacts are published for Linux, macOS, Windows, and F
 
 Use the release's published SHA-256 checksums to verify a downloaded artifact before installing it. The interactive self-update command performs checksum verification automatically. The Windows installer downloads the matching server binary; the CLI is a separate artifact.
 
-## systemd service
+## System service
 
-On a Linux host with systemd, install the downloaded binary and run the service installer as root:
+Install the binary and run the service installer with administrative privileges:
 
 ```sh
 sudo anime --service --install
-sudo systemctl status anime
-sudo journalctl -u anime -f
+systemctl status anime
 ```
 
-The installer creates and enables `anime.service`. Use `systemctl restart anime` to restart it and `systemctl stop anime` to stop it. The service runs as the dedicated `anime` account. Its configuration, data, and log locations follow the paths shown by `anime --help` and the [configuration guide](configuration.md). Review the generated service unit before exposing the server publicly.
+The installer detects systemd, OpenRC, runit, s6, SysVinit, launchd, Windows Service, or FreeBSD rc.d. Unix system services start with elevated privileges only long enough to create the `anime` system account, prepare owned directories, and bind ports below 1024; the process then drops groups and UID before initializing the application. The Windows service uses the `NT SERVICE\anime` virtual service account. A non-administrator can install a user service on systemd (`systemctl --user`) or launchd (LaunchAgent); user mode cannot bind ports below 1024. Service actions are `--service start|stop|restart|reload`, `--service --disable`, and `--service --uninstall`. Inspect service state through the native service manager; `anime --status` checks application health. Uninstall asks before removing configuration, data, backups, logs, and the system service account; the binary remains installed.
+
+The service starts as root on Unix so the application can apply a staged self-update before dropping privileges. Linux systemd uses `Restart=on-failure`; launchd, runit, and s6 restart after exit 75. OpenRC, SysVinit, and rc.d leave a staged update pending until the next service start. See the [configuration guide](configuration.md) for scheduled updates and the defer window.
 
 ### Updates
 
@@ -55,3 +56,10 @@ anime --update branch stable
 ```
 
 The update channel is stored in `server.yml`; `beta` includes stable releases, and `devel` also includes beta and rolling releases. `--maintenance update` is an alias for installing the current channel's update.
+
+The daily `update_check` scheduler honors `server.update.defer_days`. With
+`auto_install: false` it notifies the operator only. With `auto_install: true`,
+a root-started Unix service downloads and checksum-verifies an eligible release,
+stages it under the data directory, then exits with status 75 for a supervised
+restart and privileged replacement. User services and Windows services remain
+notify-only and provide a manual update command.

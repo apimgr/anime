@@ -188,6 +188,47 @@ in `server.db`. Calendar schedules use the IANA timezone configured by
 can inspect and manage persisted tasks with
 `--maintenance scheduler list|show|run|enable|disable|history`.
 
+Built-in tasks include SSL renewal, GeoIP and security-dataset refresh, keyserver
+retry, token and security cleanup, log rotation, daily and optional hourly
+backups, disk checks, health checks, and daily update checks. Tor and I2P health
+tasks are registered only when their overlay is active. Task configuration and
+run history persist in SQLite; `run` queues execution for the live scheduler or
+the next startup. A failed task is audited and can be retried according to its
+`retry_on_fail` and `retry_delay` settings.
+
+## Email notifications
+
+SMTP settings are under `server.notifications.email.smtp`; the password belongs
+in `secrets.yml`. Mail delivery is enabled only when SMTP is configured and a
+valid admin recipient is present at `server.contact.admin.email`. Startup probes
+SMTP and reports its status through the server's email health fields. Templates
+are customizable under the configuration template directory, use translation
+keys, and fall back to bundled localized defaults. `events` maps event names to
+email preferences; operator events are logged even when their email preference
+is off. Events cover backup completion/failure, SSL expiry and renewal, staged,
+installed and failed updates, security alerts, database and scheduler errors,
+low disk space, and configured startup/shutdown notifications.
+
+## Scheduled backups
+
+`backup_daily` runs at 02:00 and creates a verified full snapshot plus a daily
+incremental. `backup_hourly` is disabled by default and, when enabled, replaces
+one hourly incremental based on the latest daily full. Retention protects every
+full snapshot still needed by an incremental chain. A run is skipped with an
+ERROR-level `backup.skipped_disk_full` audit event if the disk threshold is
+exceeded or free space is below twice the newest backup's size. A skip is
+recorded as skipped and does not send a backup-failed email.
+
+## Update policy
+
+`server.update.defer_days` gates scheduled checks for stable and beta releases;
+it does not delay manual `--update check` or `--update yes`, and is ignored for
+the rolling devel channel. `auto_install` defaults to false. When enabled, a
+root-started Unix server stages checksum-verified binaries for the next
+privileged restart; a normal user service or Windows service stays notify-only.
+See [Installation](installation.md#system-service) for supervisor restart
+behavior and service privilege handling.
+
 ## Tor and I2P overlays
 
 The server owns separate loopback HTTP listeners for Tor and I2P. Tor starts
@@ -271,3 +312,24 @@ Trivy downloads. Store the optional NVD API key under `data.cve.api_key` in
 `secrets.yml`; it is removed from the ordinary YAML configuration during
 secret migration. NVD requests are paged and rate limited; HTTP 403/429 errors
 are retried by the next scheduled run without preventing startup.
+
+## TLS and log rotation
+
+TLS settings live under `server.ssl`. Certificate discovery checks the system
+Let's Encrypt paths, then `{config_dir}/ssl/letsencrypt/{fqdn}/`, then
+`{config_dir}/ssl/local/{fqdn}/`; certificates must be readable, unexpired,
+and valid for the configured FQDN. `server.ssl.letsencrypt.enabled` enables
+automated issuance and daily renewal seven days before expiry. HTTP-01 is
+served by the application HTTP listener, TLS-ALPN-01 by its HTTPS listener,
+and DNS-01 uses a lego provider named by `dns_provider`. Put provider
+environment-variable credentials in `server.ssl.letsencrypt.dns_credentials`;
+they are encrypted at rest in `secrets.yml` using the installation secret.
+Bind ports 80 and 443 (or forward those ports to the application) for HTTP-01
+and TLS-ALPN-01; use DNS-01 where the listener cannot receive those challenges.
+
+`server.logs` configures per-log `filename`, `rotate`, `keep`, `format`, and
+`compress` policies. The daily `log_rotation` scheduler task applies age and
+size limits, then applies each log's retention policy. Defaults are weekly or
+50 MB, with no retained rotated files; access logs rotate monthly and audit
+logs daily. The task operates on regular files in the configured OS log
+directory and rejects path components in configured filenames.

@@ -19,6 +19,9 @@ Anime Quotes is a full-stack Go application serving anime quotes from a curated,
 - Contact and security reporting with CAPTCHA, abuse controls, encrypted report storage, and OpenPGP support
 - Public discovery through `robots.txt`, `sitemap.xml`, Atom/RSS feeds, `llms.txt`, and canonical `security.txt`
 - Application-managed Tor and I2P overlay support
+- Persistent scheduled maintenance, encrypted and verified backups, SMTP operator alerts, GeoIP/blocklist/CVE data, and authenticated Prometheus metrics
+- Service installation across systemd, OpenRC, SysVinit, runit, s6, launchd, BSD rc.d, and Windows Service Control Manager, with a dedicated Unix service account
+- Verified server self-updates with defer windows and staged restart handling
 
 ## Production
 
@@ -32,9 +35,9 @@ docker compose -f docker/docker-compose.yml up -d
 
 The service listens on port 80 in the container. Configuration, data, and logs are mounted under `/config/anime`, `/data/anime`, and `/data/log/anime`. The Compose file binds host port `64580` on the Docker bridge address. The application starts Tor automatically when its binary is available; its onion address is shown on `/server/help` after publication. I2P is enabled by default in container mode and can be configured under `server.i2p`.
 
-### Binary and systemd
+### Binary and service installation
 
-Download the server artifact for your platform from [GitHub Releases](https://github.com/apimgr/anime/releases/latest). The server creates its configuration and operator token on first run, then selects an available port when no port is configured. Run `anime --help` for options. To install a systemd service, run `anime --service --install`, then manage it with `systemctl`.
+Download the server artifact for your platform from [GitHub Releases](https://github.com/apimgr/anime/releases/latest). The server creates its configuration and operator token on first run, then selects an available port when no port is configured. Run `anime --help` for options. To install the detected system service, run `anime --service --install`; use the platform's service manager to inspect and control it, or `anime --status` for the application health check. Installation and platform details are in [Installation](docs/installation.md).
 
 | Platform | Architectures | Server artifact |
 |---|---|---|
@@ -103,6 +106,8 @@ Direct aliases include `/api/healthz`, `/api/swagger`, `/api/graphql`, `/api/mcp
 - [Translation guide](docs/translating.md)
 
 The privacy page explains that search terms are sent in request URLs and may appear in request logs. Theme, language, and consent preferences are stored in first-party cookies; preferences can be saved, shared, or reset.
+
+Server-rendered pages include `/`, `/quotes`, `/server/about`, `/server/help`, `/server/help/mcp`, `/server/preferences`, `/server/preferences/tokens`, `/server/preferences/sync`, `/server/security`, `/server/security/policy`, `/server/security/thanks`, `/server/security/report/{tracking_id}`, `/server/contact`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/docs/swagger`, and `/server/docs/graphql`. `/server/healthz` is a health endpoint, and `/server` redirects to `/server/about`.
 
 ## Development
 
