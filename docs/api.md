@@ -34,6 +34,9 @@ Successful REST responses use the documented `ok`/`data` envelope, except health
 | GET, POST | `/api/v1/server/graphql` | None | Read-only GraphQL |
 | GET | `/api/v1/{random,quotes,stats}.txt` | None | Plain-text responses |
 | GET | `/api/v1/server/healthz.txt` | None | Health status as plain text |
+| GET | `/server/metrics[/prometheus|/grafana|/loki]` and `/api/v1/server/metrics[/prometheus|/grafana|/loki]` | Matching metrics service Bearer token | Authenticated Prometheus metrics, Grafana dashboard, or sanitized Loki access stream; available when metrics are enabled |
+| GET | `/api/metrics[/prometheus|/grafana|/loki]` | Matching metrics service Bearer token | Compatibility aliases for the metrics endpoints |
+| GET | `/metrics[/prometheus|/grafana|/loki]` | Matching metrics service Bearer token | Root aliases when `server.metrics.root.enabled` is true |
 | GET | `/api/autodiscover` | None | CLI release discovery metadata |
 | GET | `/cli/binaries/{file}` | None | Supported CLI release artifact |
 
@@ -43,7 +46,7 @@ The primary token is issued through `POST /api/v1/server/preferences/tokens/prim
 
 The quote list accepts optional case-insensitive `q`, `anime`, and `character` query parameters, each up to 256 characters. `q` searches quote text, anime, and character; the other parameters narrow their corresponding fields. `/quotes` uses the same filters.
 
-Plain-text routes are available for random quote, quote list, health, and statistics. JSON APIs can also be accessed using `/api/healthz`, `/api/swagger`, `/api/graphql`, and `/api/mcp`. GraphQL also has `/graphql`. MCP aliases are `/api/mcp` and `/mcp`.
+Plain-text routes are available for random quote, quote list, health, and statistics. JSON APIs can also be accessed using `/api/healthz`, `/api/swagger`, `/api/graphql`, and `/api/mcp`. GraphQL also has `/graphql`. MCP aliases are `/api/mcp` and `/mcp`. Metrics endpoint aliases are listed above; each requires its matching configured bearer token unless `server.metrics.auth.allow_unauthenticated` is enabled.
 
 GraphQL supports `randomQuote { anime character quote }` and `quotes(q: ..., anime: ..., character: ...) { anime character quote }`. POST uses `application/json` with a `query` string; GET supplies `query` in the URL.
 

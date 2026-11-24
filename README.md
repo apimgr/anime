@@ -90,6 +90,7 @@ Public quote reads are anonymous. MCP and token-management routes require an own
 | GET | `/api/v1/server/help/mcp` | MCP connection guide and tool list |
 | GET | `/api/v1/server/swagger` | OpenAPI 3.1 JSON |
 | GET, POST | `/api/v1/server/graphql` | Read-only GraphQL query endpoint |
+| GET | `/server/metrics`, `/api/v1/server/metrics`, `/api/metrics` | Authenticated Prometheus metrics; related Grafana and Loki routes use their matching service tokens |
 | GET | `/api/v1/{random,quotes,stats}.txt` | Plain-text responses |
 | GET | `/api/autodiscover` | CLI release metadata |
 | GET | `/cli/binaries/{file}` | Supported CLI release artifact |
