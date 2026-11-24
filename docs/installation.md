@@ -45,6 +45,13 @@ The installer detects systemd, OpenRC, runit, s6, SysVinit, launchd, Windows Ser
 
 The service starts as root on Unix so the application can apply a staged self-update before dropping privileges. Linux systemd uses `Restart=on-failure`; launchd, runit, and s6 restart after exit 75. OpenRC, SysVinit, and rc.d leave a staged update pending until the next service start. See the [configuration guide](configuration.md) for scheduled updates and the defer window.
 
+Manual starts run in the foreground by default. Use `anime --daemon` or set
+`server.daemonize: true` for a detached manual start. Service starts and
+application containers always remain in the foreground. On Unix, a PID file
+is checked and created by default outside containers; set
+`server.pidfile: false` to disable it or use `--pid`/`PID_FILE` to choose its
+path.
+
 ### Updates
 
 Check for a release or install it with checksum verification:

@@ -34,13 +34,14 @@ Default directories are selected by the application. Override them with `--confi
 
 The server watches `server.yml`, `secrets.yml`, `yaml.d/`, and `assets/` (including nested asset directories). Changes are coalesced, all configuration files are re-merged, and the new live settings become active after in-flight HTTP requests complete. An unparseable file keeps its last valid copy; deleting a file removes its values from the merged configuration. Operator assets under `{config_dir}/assets/` are served from `/assets/` with revalidation caching.
 
-Branding, SEO, theme, notification delivery and preferences, rate and security rules, discovery output, feature toggles, and scheduler schedules apply live. `server.port`, `server.address`, `server.ssl`, `server.daemonize`, `server.database`, and `server.tor` require a restart; changing them logs the setting names while keeping the current runtime values. `SIGHUP` is ignored because filesystem changes trigger reload automatically.
+Branding, SEO, theme, notification delivery and preferences, rate and security rules, discovery output, feature toggles, and scheduler schedules apply live. `server.port`, `server.address`, `server.ssl`, `server.daemonize`, `server.pidfile`, `server.database`, and `server.tor` require a restart; changing them logs the setting names while keeping the current runtime values. `SIGHUP` is ignored because filesystem changes trigger reload automatically.
 
 ## Common settings
 
 | Setting | Area file | Purpose |
 |---|---|---|
 | `server.port`, `server.address`, `server.fqdn`, `server.mode`, `server.baseurl` | `server.yml` | Listen endpoint, public identity, operating mode, and path prefix |
+| `server.daemonize`, `server.pidfile` | `server.yml` | Manual-start background behavior and PID-file checking; service managers and application containers stay in the foreground, and PID files are skipped in containers |
 | `server.database.driver`, `.url`, `.pool.*` | `server.yml` | SQLite or libSQL connection and pool |
 | `server.cache.type`, `.url`, `.host`, `.port`, `.tls`, `.tls_skip_verify`, `.tls_ca`, `.tls_cert`, `.tls_key`, `.pool_size`, `.min_idle`, `.timeout`, `.prefix`, `.ttl` | `server.yml` | In-process cache or external Valkey/Redis; credentials are stored in `secrets.yml`. TLS certificate verification is opt-in; configure a CA or client certificate by a filename under `{config_dir}/ssl/` |
 | `server.tokens.max_linked`, `.cookie_max_age`, `.idle_purge_days` | `yaml.d/security.yml` | Owner-token policy |
