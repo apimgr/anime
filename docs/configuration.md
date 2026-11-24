@@ -397,3 +397,11 @@ size limits, then applies each log's retention policy. Defaults are weekly or
 50 MB, with no retained rotated files; access logs rotate monthly and audit
 logs daily. The task operates on regular files in the configured OS log
 directory and rejects path components in configured filenames.
+
+The audit policy adds `events.configuration`, `events.security`,
+`events.backup`, and `events.server` (all enabled by default),
+`include_user_agent` (true), `mask_emails` (true), and `token_usage` (false).
+Audit entries are JSON Lines with a SHA-256 chain and a persistent
+`audit.anchor`; changing the configured filename during a live reload moves the
+active file and retained rotations while preserving the chain. See [Security](security.md#audit-log)
+for event contents, permissions, and integrity behavior.
