@@ -26,6 +26,12 @@ The maintenance CLI provides security-report listing, metadata viewing, and stat
 
 Backups include the PGP key material, installation secret, and report records. Run `anime --maintenance backup test` to perform the dry-run key restore check and confirm that the encrypted private key decrypts successfully.
 
+## Audit log
+
+When audit logging is enabled, the application writes JSON Lines records to the configured audit log in the OS log directory. Records include a unique ID, a UTC timestamp with milliseconds, event category and severity, actor, result, and a SHA-256 link to the previous record. The application checks the active chain at startup and before rotation; a broken chain raises a security event while the server continues running. The `audit.anchor` file stores the prior chain hash across rotation and uses mode `0600`; the audit log uses mode `0640`. Rotation and retention follow `server.logs.audit`. Secrets, credentials, full tokens, emails, and payment-card-like values are redacted before writing. Audit files are server-side operator records and are not available through a web route.
+
+Owner-token creation, reveal, rotation, and revocation; server lifecycle; operator events; configuration reloads; and backup and restore outcomes are recorded. CLI maintenance actions use the configured log directory even when the server is stopped.
+
 ## Discovery
 
 `/.well-known/pgp-key.asc` is available when a public key exists. `/llms.txt` and `/.well-known/llms.txt` publish API and MCP discovery information. `robots.txt`, `sitemap.xml`, `/feed.xml`, and `/rss.xml` are public discovery files. The sitemap contains only public pages allowed by the configured crawler rules; private action routes, APIs, and the contact form are omitted.
