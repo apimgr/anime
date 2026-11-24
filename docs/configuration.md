@@ -73,6 +73,11 @@ connection fields. Redis and Valkey URLs select the backend from their scheme;
 timeout, prefix, TTL, and optional private CA/client certificate files under
 `server.cache` in `server.yml`.
 
+Rate-limit counters use `server.db` by default and move to Valkey or Redis only
+when that external cache is configured. The in-process `memory` cache does not
+store rate-limit counters; it is only the fallback while an external cache is
+unavailable.
+
 When an external cache becomes unavailable, request rate limits continue with
 an in-process sliding-window fallback and the public health response marks the
 cache `degraded`. The server logs one warning for the outage and does not fail
@@ -375,6 +380,10 @@ served by the application HTTP listener, TLS-ALPN-01 by its HTTPS listener,
 and DNS-01 uses a lego provider named by `dns_provider`. Put provider
 environment-variable credentials in `server.ssl.letsencrypt.dns_credentials`;
 they are encrypted at rest in `secrets.yml` using the installation secret.
+Set `server.port` to one port for HTTP (or HTTPS when SSL is enabled), or to
+`"<http-port>,<https-port>"` for simultaneous HTTP and HTTPS. In dual-port
+mode, SSL must be enabled and the second configured port serves HTTPS, even
+when it is a custom port such as `8443`.
 Bind ports 80 and 443 (or forward those ports to the application) for HTTP-01
 and TLS-ALPN-01; use DNS-01 where the listener cannot receive those challenges.
 
