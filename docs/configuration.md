@@ -30,6 +30,12 @@ The server creates its configuration directory and operator token on first run. 
 
 Default directories are selected by the application. Override them with `--config`/`CONFIG_DIR`, `--data`/`DATA_DIR`, `--cache`/`CACHE_DIR`, `--log`/`LOG_DIR`, `--backup`/`BACKUP_DIR`, `--pid`/`PID_FILE`, and `DATABASE_DIR`. `PORT` and `LISTEN` provide listen defaults. Command-line options take priority over environment and file settings.
 
+## Live configuration reload
+
+The server watches `server.yml`, `secrets.yml`, `yaml.d/`, and `assets/` (including nested asset directories). Changes are coalesced, all configuration files are re-merged, and the new live settings become active after in-flight HTTP requests complete. An unparseable file keeps its last valid copy; deleting a file removes its values from the merged configuration. Operator assets under `{config_dir}/assets/` are served from `/assets/` with revalidation caching.
+
+Branding, SEO, theme, notification delivery and preferences, rate and security rules, discovery output, feature toggles, and scheduler schedules apply live. `server.port`, `server.address`, `server.ssl`, `server.daemonize`, `server.database`, and `server.tor` require a restart; changing them logs the setting names while keeping the current runtime values. `SIGHUP` is ignored because filesystem changes trigger reload automatically.
+
 ## Common settings
 
 | Setting | Area file | Purpose |
@@ -37,7 +43,8 @@ Default directories are selected by the application. Override them with `--confi
 | `server.port`, `server.address`, `server.fqdn`, `server.mode`, `server.baseurl` | `server.yml` | Listen endpoint, public identity, operating mode, and path prefix |
 | `server.database.driver`, `.url`, `.pool.*` | `server.yml` | SQLite or libSQL connection and pool |
 | `server.tokens.max_linked`, `.cookie_max_age`, `.idle_purge_days` | `yaml.d/security.yml` | Owner-token policy |
-| `server.rate_limit.read`, `.strict` | `yaml.d/security.yml` | Public and sensitive-operation limits |
+| `server.rate_limit.read`, `.write`, `.health`, `.strict`, `.auth_failures`, `.global_burst` | `yaml.d/security.yml` | Sliding-window limits for requests, sensitive actions, and failed authentication |
+| `server.trusted_proxies.additional`, `.client_ip_header` | `server.yml` | Trusted proxy addresses/CIDRs/DNS names and the pinned or automatic client-IP header |
 | `server.pages.contact.enabled`, `.captcha`, `.antispam.*` | `yaml.d/pages.yml` | Contact/report form and abuse controls |
 | `server.contact.*` | `yaml.d/contact.yml` | DPO, general, abuse, admin, and security contacts |
 | `server.notifications.email.smtp.*`, `.from.*` | `yaml.d/notifications.yml` | SMTP connection and sender settings |
@@ -46,6 +53,10 @@ Default directories are selected by the application. Override them with `--confi
 | `web.robots.allow`, `.deny` | `yaml.d/web.yml` | Crawler policy and sitemap inclusion |
 | `web.llms.enabled`, `.include_endpoints`, `.include_schemas`, `.custom_sections` | `yaml.d/web.yml` | LLM discovery output |
 | `server.update.branch`, `.auto_install`, `.defer_days`, `.cli_min_version` | `yaml.d/maintenance.yml` | Release channel and update behavior |
+
+### Trusted proxies
+
+Private, loopback, link-local, and the listen address's `/24` are trusted automatically. Add public proxy addresses, CIDRs, or DNS names under `server.trusted_proxies.additional`; DNS entries refresh every five minutes. Forwarded host, scheme, prefix, and client-IP headers are honored only when the immediate TCP peer is trusted. `client_ip_header: auto` checks the supported forwarding headers; setting a single header pins resolution to that header. Client IP is resolved right to left through the proxy chain and is used by rate limiting, GeoIP, blocklists, and audit logging.
 
 ## GeoIP country policy
 

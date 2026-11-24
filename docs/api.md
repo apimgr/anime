@@ -23,6 +23,7 @@ Successful REST responses use the documented `ok`/`data` envelope, except health
 | GET | `/api/v1/server/preferences/tokens` | None or owner Bearer | Token page data and masked token list |
 | POST | `/api/v1/server/preferences/tokens/primary` | None | Issue a primary owner token |
 | POST | `/api/v1/server/preferences/tokens/primary/{reveal,rotate}` | Primary owner Bearer | Reveal or rotate the primary token |
+| DELETE | `/api/v1/server/preferences/tokens/primary` | Primary owner Bearer and confirmation of the token's final four characters | Revoke the owner and all of its tokens |
 | POST | `/api/v1/server/preferences/tokens` | Primary owner Bearer | Create a linked token |
 | POST | `/api/v1/server/preferences/tokens/{id}/{reveal,rotate}` | Primary owner Bearer | Reveal or rotate a linked token |
 | PATCH | `/api/v1/server/preferences/tokens/{id}` | Primary owner Bearer | Rename a linked token or change its expiry |

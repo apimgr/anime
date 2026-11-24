@@ -84,6 +84,7 @@ Public quote reads are anonymous. MCP and token-management routes require an own
 | GET | `/api/v1/server/preferences/sync/import` | Apply supported preferences from a share URL, query, or code |
 | GET | `/api/v1/server/preferences/tokens` | Token list; values are never returned by list operations |
 | POST | `/api/v1/server/preferences/tokens/primary` | Issue a primary owner token |
+| DELETE | `/api/v1/server/preferences/tokens/primary` | Revoke an owner after confirming the token's final four characters |
 | POST, PATCH, DELETE | `/api/v1/server/preferences/tokens/...` | Reveal, rotate, create, update, or revoke tokens; primary owner required |
 | POST | `/api/v1/server/mcp` | MCP Streamable HTTP; Bearer owner token required |
 | GET | `/api/v1/server/help/mcp` | MCP connection guide and tool list |

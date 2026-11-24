@@ -121,6 +121,7 @@ Public quote and informational data routes are read-only. Owner-token issuance a
 | POST | `/api/v1/server/preferences/tokens/primary` | None | Issue an anonymous owner and primary token; returns the token and creates no human account. |
 | POST | `/api/v1/server/preferences/tokens/primary/reveal` | Primary owner Bearer | Reveal the primary token. |
 | POST | `/api/v1/server/preferences/tokens/primary/rotate` | Primary owner Bearer | Rotate the primary token and return its replacement. |
+| DELETE | `/api/v1/server/preferences/tokens/primary` | Primary owner Bearer plus confirmation of the primary token's final four characters | Delete the anonymous owner and its tokens. This product has no owner-owned resources. |
 | POST | `/api/v1/server/preferences/tokens` | Primary owner Bearer | Create a linked owner token. |
 | POST | `/api/v1/server/preferences/tokens/{id}/reveal` | Primary owner Bearer | Reveal a linked token. |
 | POST | `/api/v1/server/preferences/tokens/{id}/rotate` | Primary owner Bearer | Rotate a linked token. |
