@@ -14,6 +14,7 @@ license: MIT
 binary: anime
 client_binary: anime-cli
 owner_token: anime_owner_token_qmzrjvka
+owner_token_legacy: anime_owner_token_4mxwkxfqGg
 
 ## Business logic
 

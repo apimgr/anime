@@ -28,21 +28,34 @@ Catalogs live at `src/common/i18n/locales/{language}.json` and are embedded in t
 
 ## Product glossary
 
-Use these terms consistently across the interface, CLI, email, and documentation. Translate the concept for each locale; keep route names, API fields, and configuration keys unchanged.
+Use these terms consistently across the interface, CLI, email, and documentation. Translate the concept for each locale; keep route names, API fields, and configuration keys unchanged. Preserve `token`, product names, protocol names, and other terms that AI.md marks as untranslated.
 
-| English term | Meaning and translation guidance |
-|---|---|
-| Anime Quotes API | Product name. Keep the brand name unchanged. |
-| owner token | A credential that controls an owner's account and linked API tokens. Do not call it a password. |
-| linked token | An API credential created under an owner account. Keep it distinct from the owner token. |
-| token prefix | The visible identifier used to recognize a token; it is not the secret token value. |
-| rotate a token | Replace a credential and revoke the previous credential. |
-| revoke a token | Disable a credential so it can no longer authenticate. |
-| preference sync | Transfer the supported preferences between this service and a client. |
-| security report | A report about a security event or finding; preserve the distinction from an audit record. |
-| disclosure | A security disclosure submitted through the published reporting process. |
-| rate limit | A policy that limits request frequency. Keep the term distinct from account or token quotas. |
-| backup | A restorable copy of application data and configuration. |
-| restore | Recover application data from a backup. |
+| English | Español | Français | Deutsch | Italiano | العربية |
+|---|---|---|---|---|---|
+| Anime Quotes API | Anime Quotes API | Anime Quotes API | Anime Quotes API | Anime Quotes API | Anime Quotes API |
+| owner token | token del propietario | token du propriétaire | Owner-Token | token del proprietario | token المالك |
+| linked token | token vinculado | token lié | verknüpfter Token | token collegato | token المرتبط |
+| token prefix | prefijo del token | préfixe du token | Token-Präfix | prefisso del token | بادئة token |
+| paste the token | pegue el token | collez le token | fügen Sie den Token ein | incolli il token | قم بلصق token |
+| rotate a token | rotar un token | renouveler un token | einen Token erneuern | ruotare un token | تدوير token |
+| revoke a token | revocar un token | révoquer un token | einen Token widerrufen | revocare un token | إبطال token |
+| preference sync | sincronización de preferencias | synchronisation des préférences | Synchronisierung der Einstellungen | sincronizzazione delle preferenze | مزامنة التفضيلات |
+| security report | informe de seguridad | signalement de sécurité | Sicherheitsbericht | segnalazione di sicurezza | بلاغ أمني |
+| security disclosure | divulgación de vulnerabilidades | divulgation de vulnérabilités | Offenlegung von Sicherheitslücken | divulgazione delle vulnerabilità | الإفصاح عن الثغرات الأمنية |
+| rate limit | límite de solicitudes | limite de requêtes | Ratenbegrenzung | limite di richieste | حد الطلبات |
+| backup | copia de seguridad | sauvegarde | Sicherung | copia di backup | نسخة احتياطية |
+| restore | restaurar | restaurer | wiederherstellen | ripristinare | استعادة |
+
+## Translator credits
+
+The supported locale files are `en.json`, `es.json`, `fr.json`, `ar.json`, `de.json`, and `it.json` (6 languages). No individual translator names or handles are currently recorded. Each locale's `meta.translators` list is empty until a contributor provides a preferred public name or handle; credited contributors may add it through a normal pull request. Do not infer or assign credit without the contributor's preference.
+
+Usage notes:
+
+- An owner token controls an owner's account and linked API tokens; never call it a password.
+- A token prefix is a visible identifier, not the secret token value.
+- Rotation replaces a credential and revokes the previous one. Revocation disables a credential so it can no longer authenticate.
+- Preference sync transfers supported settings between this service and a client.
+- Keep a security report distinct from an audit record. A backup is a restorable copy of application data and configuration.
 
 Translate all human-readable application strings: web pages, validation and API errors, OpenAPI and GraphQL descriptions, email content, health/status output, consent controls, server and client CLI help and messages, startup banners, and setup prompts. Do not put runtime translations in a second locale directory or fetch locale files from the host filesystem.

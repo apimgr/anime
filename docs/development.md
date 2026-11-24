@@ -63,12 +63,18 @@ Use only the test environments described by AI.md. Do not start `docker/docker-c
 Build the Read the Docs site in a disposable Docker container. This keeps Python packages and generated site files out of the host and repository:
 
 ```sh
-mkdir -p "${TMPDIR:-/tmp}/apimgr"
-DOCS_TMP=$(mktemp -d "${TMPDIR:-/tmp}/apimgr/anime-docs-XXXXXX")
+PROJECT_REMOTE=$(git remote get-url origin)
+PROJECT_NAME=${PROJECT_REMOTE##*/}
+PROJECT_NAME=${PROJECT_NAME%.git}
+PROJECT_ORG=$(printf '%s\n' "$PROJECT_REMOTE" | sed -E 's|.*/([^/]+)/[^/]+(\.git)?$|\1|')
+INTERNAL_NAME=$(sed -n 's/^internal_name:[[:space:]]*//p' IDEA.md | head -n1)
+INTERNAL_NAME=${INTERNAL_NAME:-$PROJECT_NAME}
+mkdir -p "${TMPDIR:-/tmp}/$PROJECT_ORG"
+DOCS_TMP=$(mktemp -d "${TMPDIR:-/tmp}/$PROJECT_ORG/$INTERNAL_NAME-XXXXXXXX")
 mkdir -p "$DOCS_TMP/site"
-DOCS_NAME="anime-docs-$(basename "$DOCS_TMP" | cut -d- -f3)"
+DOCS_NAME="$PROJECT_NAME-$(od -An -N4 -tx1 /dev/urandom | tr -d ' ')"
 trap 'rm -rf "$DOCS_TMP"' EXIT
-docker run --rm --name "$DOCS_NAME" --no-healthcheck \
+timeout -k 30 "${DOCKER_TIMEOUT:-3600}" docker run --rm --name "$DOCS_NAME" --no-healthcheck --memory=2g --cpus=2 \
   -v "$PWD:/src:ro" -v "$DOCS_TMP/site:/site" -w /src python:3.12-alpine \
   sh -ec 'python -m pip install --no-cache-dir -r docs/requirements.txt && mkdocs build --strict --site-dir /site'
 ```

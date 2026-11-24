@@ -6,6 +6,7 @@
 
 - Never enable CGO or require an external runtime dependency.
 - Never hand-roll server flag parsing or hardcode a renamed binary's display name.
+- Never put application startup orchestration back into `src/main.go`; keep it as the thin flag/bootstrap wrapper and test `run(ctx, cfg)` in the runtime package.
 - Never let development mode alone expose pprof or debug endpoints.
 - Never make the client require a GUI or TUI for command-line workflows.
 
@@ -15,6 +16,7 @@
 - Support `--help`, `--version`, `--shell`, `--debug`, `--color`, and `--lang`.
 - Detect TTY, display, SSH, and `TERM=dumb`; respect `NO_COLOR`.
 - Detect stale PID files and skip PID files in containers.
+- Keep privileged bootstrap ordering explicit: bind/configure only the allowed early values before privilege drop, then load full configuration and call the runtime package.
 - Ship the required `anime-cli` client with server discovery, configuration, and updates.
 
 ## Key rules

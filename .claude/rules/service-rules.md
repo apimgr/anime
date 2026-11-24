@@ -12,6 +12,7 @@
 
 - Create and use the dedicated service identity where the platform supports privilege drop.
 - Complete privileged filesystem and socket setup before dropping privileges.
+- Follow PART 23's ordered startup: inspect only approved bootstrap settings as root, prepare/bind protected resources, drop and verify identity, then load full configuration and start the runtime.
 - Support systemd, runit, rc.d, launchd, and Windows Service Manager.
 - Require authorization for destructive or operator-only maintenance actions.
 
@@ -20,5 +21,6 @@
 - Check capabilities and permissions instead of assuming escalation access.
 - Resolve service paths and names from stable project variables.
 - Preserve foreground behavior under modern service managers and containers.
+- PID handling obeys the configured `server.pidfile` enable/disable state and uses the canonical resolved path.
 
 For complete details, see AI.md PART 23, 24

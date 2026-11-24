@@ -12,6 +12,7 @@
 ## CRITICAL - ALWAYS DO
 
 - Provide the versioned REST API, synchronized OpenAPI/Swagger, and GraphQL surfaces.
+- Keep every route in the documented public discovery/API inventory and remove obsolete project-local aliases.
 - Negotiate HTML, JSON, and text formats as specified and use canonical envelopes.
 - Provide complete dynamic health checks and stable version/build metadata.
 - Build absolute URLs from trusted request context and configured URL values.
@@ -22,5 +23,6 @@
 - Health is available at `/server/healthz` and `/api/{api_version}/server/healthz`.
 - Swagger and GraphQL UI/API routes must be complete and documented.
 - Root aliases are opt-in only where the relevant config defines them.
+- Public health/discovery surfaces must not disclose credentials, private paths, internal IPs, or protected owner data.
 
 For complete details, see AI.md PART 13, 14, 15

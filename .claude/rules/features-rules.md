@@ -24,5 +24,7 @@
 - SMTP is optional and must degrade gracefully when unavailable.
 - Compliance mode requires encrypted backups and a password.
 - Never log credentials or expose raw secrets in API responses.
+- Keep backup creation verifiable and restore atomic; retain incrementals and daily/hourly naming exactly as PART 21 specifies.
+- Scheduled task history, audit events, and operator notifications use the persisted execution identity and suppress duplicate failure events.
 
 For complete details, see AI.md PART 17, 18, 19, 20, 21, 22

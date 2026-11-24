@@ -19,7 +19,9 @@
 ## Key rules
 
 - Infer project name and organization from the Git remote, with path fallback.
+- CI commands are explicit and never call Makefile targets; local CI version values never read `release.txt`.
 - Make test includes vet, vulnerability scanning, coverage, and test execution.
+- Local version precedence is user `VERSION`, nonempty `release.txt`, then the devel commit identifier; avoid destructive `clean` before preserving existing outputs.
 - Keep output and temporary artifacts in the locations prescribed by AI.md.
 
 For complete details, see AI.md PART 25

@@ -22,5 +22,7 @@
 - The production container stays in the foreground and receives graceful signals.
 - Runtime files live in `/config` and `/data`, never the source checkout.
 - Do not create a custom Go build image; use `casjaysdev/go:latest`.
+- Docker runtime defaults use the spec's IPv6 listen address and bind published host ports only to the Docker bridge address.
+- Container I2P defaults are computed by the application; do not set an overriding `I2P_ENABLED` in the image.
 
 For complete details, see AI.md PART 26

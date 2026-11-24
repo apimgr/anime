@@ -21,6 +21,9 @@
 
 - Go projects do not use a custom build image or toolchain preflight workflow.
 - Pin third-party actions to verified full commit SHAs with Renovate annotations.
+- Keep equivalent GitHub, Gitea, Forgejo, GitLab, and Jenkins pipelines, including beta/devel/release and Docker workflows.
+- Expand every generated release name, description, note, and asset path before publishing; never publish a literal workflow expression or placeholder.
+- CI versions are derived from the event/ref/commit and never from `release.txt`; Docker images build on every branch push as specified.
 - Keep workflow permissions least-privilege and releases verifiable.
 
 For complete details, see AI.md PART 27

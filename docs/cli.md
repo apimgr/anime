@@ -1,6 +1,6 @@
 # CLI reference
 
-The companion `anime-cli` binary reads only from the public API.
+The companion `anime-cli` binary reads quotes from the public API. It can also send an owner or operator API token for authenticated endpoints and update downloads.
 
 ```sh
 anime-cli --server https://YOUR_SERVER random
@@ -9,6 +9,14 @@ anime-cli --server https://YOUR_SERVER search "fullmetal alchemist"
 ```
 
 `--server URL` overrides `ANIME_SERVER_PRIMARY`, which overrides `server.primary` in the user-scoped `cli.yml`. Use `--config PROFILE` to select a named profile (`PROFILE.yml`) or an explicit YAML path. First run creates user-only config/data/cache/log directories and a 0600 config file. With no command and no configured server, an interactive terminal prompts for the server URL, tests `/api/v1/server/healthz`, and saves a working URL before opening the quote browser TUI. Enter `q` to cancel. A no-command invocation without a terminal still requires a configured server. The TUI is enabled by default and can be disabled with `tui.enabled: false`; its theme comes from `tui.theme` (`dark`, `light`, or `system`).
+
+Set authentication in `cli.yml` or for one invocation with `--token TOKEN`. Use `--token-file FILE` to read a token from a protected file; the file is trimmed and never copied into `cli.yml`. Precedence is `--token`, `--token-file`, `auth.token_file`, then `auth.token`. The CLI sends the bearer token with API requests and does not print it in diagnostics.
+
+```yaml
+auth:
+  token: ""
+  token_file: /secure/path/anime-token
+```
 
 `--output`/`--format` accepts `table`, `json`, `yaml`, `plain`, or `csv`; the default is selected by `output.format` in `cli.yml` and can be overridden with `ANIME_OUTPUT_FORMAT`. Server API version, timeout, retry count, and retry delay are configurable under `server`. Non-random responses are cached in the user cache directory according to `cache.enabled`, `cache.ttl`, and `cache.max_size`. The CLI writes a private `cli.log` file in the user log directory; `logging.level`, `logging.file`, `logging.max_size`, and `logging.max_files` configure its verbosity and rotation. `--color` respects `NO_COLOR`. `--lang` accepts any supported locale, sends it in `Accept-Language` on API and TUI requests, and falls back to English for unsupported values. With `--lang auto` (the default), the client uses `lang` in `cli.yml`, then `LC_ALL`, then `LANG`, then English. Use `--shell completions [bash|zsh|fish|sh|dash|ksh|powershell|pwsh]` or `--shell init [SHELL]` for shell integration.
 
