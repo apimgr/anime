@@ -1,6 +1,6 @@
 # Development
 
-Anime Quotes is a Go application. Read [AI.md](../AI.md) for implementation rules and [IDEA.md](../IDEA.md) for product requirements before changing code. Go builds and tests run in the repository's `casjaysdev/go:latest` Docker toolchain through the Makefile; do not install or run Go directly on the host.
+Anime Quotes is a Go application. Read [AI.md](https://github.com/apimgr/anime/blob/main/AI.md) for implementation rules and [IDEA.md](https://github.com/apimgr/anime/blob/main/IDEA.md) for product requirements before changing code. Go builds and tests run in the repository's `casjaysdev/go:latest` Docker toolchain through the Makefile; do not install or run Go directly on the host.
 
 ## Prerequisites
 
@@ -50,7 +50,7 @@ The Incus service lifecycle checks are explicit manual runs, separate from the D
 ./tests/incus.sh all
 ```
 
-The on-demand headless browser suite covers server-rendered, no-JavaScript, and JavaScript-enabled flows. It is a separate manual tier and is not started by `run_tests.sh`, `make test`, or the commit gate:
+The on-demand headless browser suite covers server-rendered, no-JavaScript, and JavaScript-enabled flows. Its responsive layout matrix checks the public page routes in English and Arabic at the nine AI.md viewport sizes, in dark, light, and automatic themes, with 200% text zoom, long identifiers and translations, empty/small/full lists, and labeled/touch-sized controls. The horizontal-overflow backstop is disabled during those checks, and the mobile drawer is checked for viewport height and complete navigation. It is a separate manual tier and is not started by `run_tests.sh`, `make test`, or the commit gate:
 
 ```sh
 ./tests/e2e.sh

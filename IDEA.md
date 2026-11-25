@@ -26,6 +26,7 @@ owner_token_legacy: anime_owner_token_4mxwkxfqGg
 - Filtering/searching by quote text, anime title, or character name
 - Public JSON API responses with a consistent success envelope
 - Full web frontend (server-side Go templates, dark/light/auto theme, PWA, mobile-first)
+- Localized server and CLI interface for English (`en`), Spanish (`es`), French (`fr`), German (`de`), Italian (`it`), and Arabic (`ar`); English is the fallback and Arabic uses right-to-left layout
 - Server pages: `/server/about`, `/server/help`, `/server/healthz`, `/server/privacy`, `/server/terms`, `/server/dpo`
 - Server security reporting pages, contact reporting, token management, and MCP connection help required by the API baseline
 - Informational JSON counterparts at `/api/{api_version}/server/{about,help,privacy,terms,dpo}`
@@ -117,7 +118,7 @@ Public quote and informational data routes are read-only. Owner-token issuance a
 | GET | `/api/v1/server/security/policy` | None | Return the disclosure policy as Markdown. |
 | GET | `/api/v1/server/security/thanks` | None | Return credited researchers; empty until disclosures are recorded. |
 | GET | `/api/v1/server/healthz` | None | Return service health and public build/status information directly; HTTP 503 indicates unhealthy status. |
-| GET, POST | `/api/v1/server/preferences` | None | Read or update browser-local `theme` (`dark`, `light`, `auto`) and `lang` (`en`) cookie values. Unknown or invalid preferences are reported as ignored. |
+| GET, POST | `/api/v1/server/preferences` | None | Read or update browser-local `theme` (`dark`, `light`, `auto`) and `lang` (`en`, `es`, `fr`, `de`, `it`, `ar`) cookie values. Unknown or invalid preferences are reported as ignored. |
 | GET | `/api/v1/server/preferences/tokens` | None or owner Bearer | Return the token page/list; token values are never returned by the list API. |
 | POST | `/api/v1/server/preferences/tokens/primary` | None | Issue an anonymous owner and primary token; returns the token and creates no human account. |
 | POST | `/api/v1/server/preferences/tokens/primary/reveal` | Primary owner Bearer | Reveal the primary token. |
