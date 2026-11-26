@@ -28,6 +28,8 @@ make build     # local binaries plus all supported OS and architecture builds
 make clean     # remove binaries/ and releases/
 ```
 
+Maintainers publish a beta by running `make beta` on a clean `main` branch. It creates and pushes a UTC `YYYYMMDDHHMMSS-beta` tag; the CI workflows build and publish the beta release and images.
+
 Runtime and test data belongs in an OS temporary directory. Do not use the production or development Compose files for automated testing. CI uses explicit Go commands in the maintained toolchain container and does not call Makefile targets. CI definitions are maintained for GitHub Actions, Gitea Actions, Forgejo Actions, GitLab CI, and Jenkins; the GitHub workflows run for this repository's GitHub remote.
 
 ## Integration and browser testing

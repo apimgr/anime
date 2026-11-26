@@ -23,6 +23,6 @@
 
 - Show the actual executable name in help, version, and user-facing errors.
 - Keep server startup in the binary; no setup script is required.
-- The client supports CLI, TUI, and GUI modes while preserving headless errors.
+- The client supports non-interactive CLI workflows and the specified TUI/GUI paths; display, remote-session, headless, and unsupported-platform behavior must follow AI.md.
 
 For complete details, see AI.md PART 7, 8, 32

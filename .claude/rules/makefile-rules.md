@@ -11,7 +11,7 @@
 
 ## CRITICAL - ALWAYS DO
 
-- Provide the required local build, release, Docker, test, dev, clean, and help targets.
+- Provide exactly the seven core targets `dev`, `local`, `build`, `test`, `release`, `beta`, and `docker`, plus only `clean` and `release-check`; do not add `help`, `all`, or other targets.
 - Run Go tooling in `casjaysdev/go:latest` with CGO disabled and resource limits.
 - Use project-scoped Go build caches and `binaries/` / `releases/` outputs.
 - Keep Docker builds local by default; only explicit release workflows publish.
@@ -21,6 +21,7 @@
 - Infer project name and organization from the Git remote, with path fallback.
 - CI commands are explicit and never call Makefile targets; local CI version values never read `release.txt`.
 - Make test includes vet, vulnerability scanning, coverage, and test execution.
+- `beta` tags the current clean `main` commit with a UTC `YYYYMMDDHHMMSS-beta` tag and pushes only that tag; it does not build or publish directly.
 - Local version precedence is user `VERSION`, nonempty `release.txt`, then the devel commit identifier; avoid destructive `clean` before preserving existing outputs.
 - Keep output and temporary artifacts in the locations prescribed by AI.md.
 

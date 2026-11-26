@@ -19,6 +19,8 @@
 - Treat internet-facing traffic as hostile and preserve authentication and abuse controls.
 - After compaction, reread only the relevant AI.md sections; return to the prior point after following a cross-reference.
 - Keep project task tracking in `TODO.AI.md`/`TODO.md`; shared `TODO.API.md` is only for verified defects inside AI.md.
+- Search the shared API-template inbox before logging a template issue; never duplicate an issue already recorded there.
+- Do not use source code, existing docs, audit notes, or TODO files as authority when they conflict with AI.md.
 
 ## Key rules
 

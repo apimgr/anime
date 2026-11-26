@@ -24,5 +24,6 @@
 - Do not create a custom Go build image; use `casjaysdev/go:latest`.
 - Docker runtime defaults use the spec's IPv6 listen address and bind published host ports only to the Docker bridge address.
 - Container I2P defaults are computed by the application; do not set an overriding `I2P_ENABLED` in the image.
+- Compose files use the same project name, network, and fixed service container names across production, development, and test; tests use only the test Compose/script path.
 
 For complete details, see AI.md PART 26

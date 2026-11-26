@@ -13,7 +13,7 @@
 - Create and use the dedicated service identity where the platform supports privilege drop.
 - Complete privileged filesystem and socket setup before dropping privileges.
 - Follow PART 23's ordered startup: inspect only approved bootstrap settings as root, prepare/bind protected resources, drop and verify identity, then load full configuration and start the runtime.
-- Support systemd, runit, rc.d, launchd, and Windows Service Manager.
+- Support every platform manager specified by PART 24: systemd, OpenRC, SysVinit, runit, s6, launchd, BSD rc.d, and Windows Service Control Manager.
 - Require authorization for destructive or operator-only maintenance actions.
 
 ## Key rules

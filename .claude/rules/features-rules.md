@@ -9,6 +9,7 @@
 - Never treat unavailable GeoIP data as a reason to block normal service startup.
 - Never restore untrusted archives directly into live filesystem paths.
 - Never auto-install an update that fails checksum or minimum-version policy.
+- Never make external data providers, SMTP, or overlay daemons mandatory for ordinary quote serving.
 
 ## CRITICAL - ALWAYS DO
 
@@ -26,5 +27,6 @@
 - Never log credentials or expose raw secrets in API responses.
 - Keep backup creation verifiable and restore atomic; retain incrementals and daily/hourly naming exactly as PART 21 specifies.
 - Scheduled task history, audit events, and operator notifications use the persisted execution identity and suppress duplicate failure events.
+- GeoIP is a risk signal, unavailable data fails open, and blocklists follow the configured allowlist and denylist order.
 
 For complete details, see AI.md PART 17, 18, 19, 20, 21, 22

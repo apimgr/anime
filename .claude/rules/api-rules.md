@@ -5,14 +5,14 @@
 ## CRITICAL - NEVER DO
 
 - Never expose sensitive internals in health, API, or error responses.
-- Never publish undocumented routes or keep project-local legacy aliases.
+- Never publish undocumented routes or keep project-local legacy routes as compatibility shims.
 - Never hardcode hostnames, ports, or schemes into generated URLs.
 - Never serve an authenticated or private response with public caching.
 
 ## CRITICAL - ALWAYS DO
 
 - Provide the versioned REST API, synchronized OpenAPI/Swagger, and GraphQL surfaces.
-- Keep every route in the documented public discovery/API inventory and remove obsolete project-local aliases.
+- Keep every route in the documented public discovery/API inventory. Implement only the explicit unversioned aliases AI.md allows; delete obsolete project-local routes.
 - Negotiate HTML, JSON, and text formats as specified and use canonical envelopes.
 - Provide complete dynamic health checks and stable version/build metadata.
 - Build absolute URLs from trusted request context and configured URL values.

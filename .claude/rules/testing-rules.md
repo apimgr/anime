@@ -12,6 +12,7 @@
 ## CRITICAL - ALWAYS DO
 
 - Provide unit, integration, E2E, Docker, and Incus scripts required by PART 28.
+- Provide `tests/run_tests.sh`, `tests/docker.sh`, `tests/incus.sh`, and `tests/e2e.sh`; `tests/virt.sh` is optional. The basic tier remains Docker-only.
 - `tests/run_tests.sh` runs only the Docker basic tier; `tests/incus.sh` owns service lifecycle checks; browser E2E is on demand and not a commit gate; `tests/virt.sh` is optional and only for clean-OS cases.
 - Keep tests isolated and clean every task-created container, VM, volume, and network.
 - Build MkDocs and ReadTheDocs documentation from the canonical docs tree.
@@ -24,6 +25,7 @@
 - Keep documentation, API schemas, and actual route behavior in sync.
 - E2E browser coverage is on demand, not part of the commit gate.
 - Build and lint Go only in the prescribed container; build MkDocs strictly and do not claim accessibility/layout checks without performing them.
+- Keep unit coverage at or above 60%; test all API endpoints and frontend routes, including error and negotiation paths.
 - Keep `docs/translating.md` locale count/credits aligned with locale metadata; never invent translator attribution.
 
 For complete details, see AI.md PART 28, 29, 30

@@ -18,6 +18,7 @@
 - Validate paths, ports, hosts, and every loaded configuration value.
 - Hot-reload safe settings and report settings that require restart.
 - Reject unknown keys and invalid values; preserve file-only configuration with no settings API or admin UI.
+- Keep credentials in `secrets.yml`; generated secrets are written atomically with private permissions and are never printed or logged except for the explicitly permitted first-start operator-token disclosure.
 
 ## Key rules
 

@@ -122,6 +122,8 @@ make local
 make build
 ```
 
+Maintainers can publish a beta from a clean `main` branch with `make beta`. It pushes a UTC `YYYYMMDDHHMMSS-beta` tag, which triggers the beta release workflows.
+
 The Makefile builds server and CLI binaries for Linux, macOS, Windows, and FreeBSD on amd64 and arm64. `tests/run_tests.sh` runs the Docker-only basic tier for binary, HTTP, and CLI checks, including help output after renaming both binaries. It exits with status 69 when Docker is unavailable. `tests/test_content_negotiation.sh` separately checks public HTML, API (including `/api/autodiscover`), and fixed discovery routes. Incus service lifecycle and browser E2E checks are separate manual tiers:
 
 ```sh

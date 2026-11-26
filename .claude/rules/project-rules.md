@@ -22,6 +22,7 @@
 
 - Keep templates and static assets embedded in the single binary.
 - Keep runtime data outside the repository and separate config, data, cache, and logs.
+- Keep the root file set and `src/` package layout within AI.md's exhaustive allowlists; `docs/` contains only the ReadTheDocs site.
 - Keep source, docs, and project tracking inside the repo; put runtime/test output in `/tmp/{project_org}/{internal_name}-XXXXXX`.
 - Docker uses `/config` and `/data`; native platforms use PART 4 paths.
 
