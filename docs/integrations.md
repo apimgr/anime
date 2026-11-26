@@ -21,6 +21,14 @@
 | `/.well-known/pgp-key.asc` | Public security-report encryption key when configured |
 | `/manifest.json`, `/sw.js` | PWA manifest and service worker |
 
+The service worker caches versioned static assets and only public HTML
+responses explicitly marked with `X-Offline-Cache: public`. Owner, token,
+administration, and form pages are excluded; offline navigation shows a
+localized offline page instead of stale private content. A new worker waits
+until the visitor accepts the in-page update prompt, then activates and reloads
+the page. Supported browsers can install the app from the footer button; on
+iOS, the button explains how to add it from the browser's share menu.
+
 The canonical security file is `/.well-known/security.txt`; `/security.txt` is not served. Discovery URLs are generated for the request origin. Sitemap and feed URLs are absolute. The feeds are valid with no entries when the project has no time-stamped public quote records.
 
 ## External services
