@@ -17,6 +17,7 @@ Successful REST responses use the documented `ok`/`data` envelope, except health
 | GET | `/api/v1/server/security` | None | Security contacts, policy, expiry, and key metadata |
 | GET | `/api/v1/server/security/{policy,thanks}` | None | Disclosure policy and researcher acknowledgments |
 | GET | `/api/v1/server/healthz` | None | Health status; HTTP 503 when unhealthy |
+| GET | `/api/v1/server/auth/check` | Operator or owner Bearer | Side-effect-free machine check returning `kind: operator` or `kind: owner`; invalid tokens receive 401 |
 | GET, POST | `/api/v1/server/preferences` | None | Read or update browser-local preferences |
 | GET | `/api/v1/server/preferences/sync` | None | Export preferences as a share URL and code |
 | GET | `/api/v1/server/preferences/sync/import` | None | Apply supported preferences from a share URL, query, or code |

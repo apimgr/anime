@@ -58,6 +58,9 @@ The on-demand headless browser suite covers server-rendered, no-JavaScript, and 
 ./tests/e2e.sh
 ```
 
+The same test tiers can run after the unit, vet, and vulnerability gate through
+Make variables: `make test BASIC=1 CONTENT_NEGOTIATION=1 INCUS=1 E2E=1`.
+
 Use only the test environments described by AI.md. Do not start `docker/docker-compose.yml` or `docker/docker-compose.dev.yml` during automated testing.
 
 ## Documentation

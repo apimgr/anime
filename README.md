@@ -79,6 +79,7 @@ Public quote reads are anonymous. MCP and token-management routes require an own
 | GET | `/api/v1/server/security` | Security reporting metadata and disclosure links |
 | GET | `/api/v1/server/security/{policy,thanks}` | Disclosure policy and acknowledgments |
 | GET | `/api/v1/server/healthz` | Health object; HTTP 503 when unhealthy |
+| GET | `/api/v1/server/auth/check` | Check an operator or owner Bearer token without changing token usage metadata |
 | GET, POST | `/api/v1/server/preferences` | Read or update browser-local preferences |
 | GET | `/api/v1/server/preferences/sync` | Export preferences as a share URL and code |
 | GET | `/api/v1/server/preferences/sync/import` | Apply supported preferences from a share URL, query, or code |
