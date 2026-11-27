@@ -117,19 +117,18 @@ Server-rendered pages include `/`, `/quotes`, `/server/about`, `/server/help`, `
 Go builds and tests run in the `casjaysdev/go:latest` container through the Makefile; do not run Go directly on the host.
 
 ```sh
-make dev
-make test
-make local
 make build
+make test
+make release
+make docker
+make clean
 ```
 
-Maintainers can publish a beta from a clean `main` branch with `make beta`. It pushes a UTC `YYYYMMDDHHMMSS-beta` tag, which triggers the beta release workflows.
+`make build` creates debug binaries for the host and all supported platforms. `make test` runs the toolchain quality gates, unit tests with the 60% coverage threshold, and the Docker basic binary checks. `make release` creates production binaries, a source archive, and checksums locally; it does not publish or tag a release. `make docker` builds and checks the host-platform image locally without pushing it.
 
-The Makefile builds server and CLI binaries for Linux, macOS, Windows, and FreeBSD on amd64 and arm64. `tests/run_tests.sh` runs the Docker-only basic tier for binary, HTTP, and CLI checks, including help output after renaming both binaries. It exits with status 69 when Docker is unavailable. `tests/test_content_negotiation.sh` separately checks public HTML, API (including `/api/autodiscover`), and fixed discovery routes. Incus service lifecycle and browser E2E checks are separate manual tiers:
+The Makefile builds server and CLI binaries for Linux, macOS, Windows, and FreeBSD on amd64 and arm64. The basic binary tier runs as part of `make test`. `tests/test_content_negotiation.sh` separately checks public HTML, API (including `/api/autodiscover`), and fixed discovery routes. Incus service lifecycle and browser E2E checks are separate manual tiers:
 
 ```sh
-./tests/run_tests.sh
-./tests/docker.sh
 ./tests/test_content_negotiation.sh
 ./tests/incus.sh
 ./tests/e2e.sh

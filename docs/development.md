@@ -18,31 +18,27 @@ git clone https://github.com/apimgr/anime.git
 cd anime
 ```
 
-Use the Makefile for Go tasks:
+Use the six Makefile targets for Go tasks:
 
 ```sh
-make dev       # quick server and CLI build in an OS temporary directory
-make test      # go vet, govulncheck, unit tests and the 60% coverage gate
-make local     # production-style server and CLI binaries for the host platform
-make build     # local binaries plus all supported OS and architecture builds
+make build     # debug server and CLI binaries for all supported platforms
+make test      # quality gates, tests, 60% coverage gate, and basic binary checks
+make release   # production binaries, source archive, and checksums; never publishes
+make docker    # host-platform image build and image contract check; never pushes
 make clean     # remove binaries/ and releases/
 ```
 
-Maintainers publish a beta by running `make beta` on a clean `main` branch. It creates and pushes a UTC `YYYYMMDDHHMMSS-beta` tag; the CI workflows build and publish the beta release and images.
-
-Runtime and test data belongs in an OS temporary directory. Do not use the production or development Compose files for automated testing. CI uses explicit Go commands in the maintained toolchain container and does not call Makefile targets. CI definitions are maintained for GitHub Actions, Gitea Actions, Forgejo Actions, GitLab CI, and Jenkins; the GitHub workflows run for this repository's GitHub remote.
+Builds and tests run in the `casjaysdev/go:latest` container. Runtime, test, coverage, and browser artifacts belong in project-scoped OS temporary directories. Do not use production or development Compose files for automated testing. CI uses explicit Go commands in the maintained toolchain container and does not call Makefile targets. CI definitions are maintained for GitHub Actions, Gitea Actions, Forgejo Actions, GitLab CI, and Jenkins; the GitHub workflows run for this repository's GitHub remote. Release and beta publishing are performed by CI after their documented triggers; local Makefile targets never tag or publish.
 
 ## Integration and browser testing
 
-The basic binary and HTTP checks are Docker-only:
+`make test` includes the Docker-only basic binary checks. `tests/test_content_negotiation.sh` is a separate manual check:
 
 ```sh
-./tests/run_tests.sh
-./tests/docker.sh
 ./tests/test_content_negotiation.sh
 ```
 
-`run_tests.sh` delegates only to the Docker basic tier; it never falls back to Incus. If Docker is unavailable, it reports the missing prerequisite and exits with status 69. Other test scripts use the shared prerequisite check, which also reports a missing command and exits with status 69. The Docker tier checks both server and CLI version/help output, then copies each binary under a renamed filename and verifies the renamed name appears in its help output. The content-negotiation script separately checks the public HTML, API (including `/api/autodiscover`), and fixed discovery routes with their supported response formats.
+The basic tier checks server and CLI version/help output, starts the application, and checks CLI access; it also copies each binary under a renamed filename and verifies the renamed name appears in its help output. The content-negotiation script checks public HTML, API (including `/api/autodiscover`), and fixed discovery routes with their supported response formats.
 
 The Incus service lifecycle checks are explicit manual runs, separate from the Docker basic tier:
 
@@ -52,14 +48,11 @@ The Incus service lifecycle checks are explicit manual runs, separate from the D
 ./tests/incus.sh all
 ```
 
-The on-demand headless browser suite covers server-rendered, no-JavaScript, and JavaScript-enabled flows. Its responsive layout matrix checks the public page routes in English and Arabic at the nine AI.md viewport sizes, in dark, light, and automatic themes, with 200% text zoom, long identifiers and translations, empty/small/full lists, and labeled/touch-sized controls. The horizontal-overflow backstop is disabled during those checks, and the mobile drawer is checked for viewport height and complete navigation. It is a separate manual tier and is not started by `run_tests.sh`, `make test`, or the commit gate:
+The on-demand headless browser suite covers server-rendered, no-JavaScript, and JavaScript-enabled flows. Its responsive layout matrix checks the public page routes in English and Arabic at the AI.md viewport sizes, in dark, light, and automatic themes, with 200% text zoom, long identifiers and translations, empty/small/full lists, and labeled/touch-sized controls. The horizontal-overflow backstop is disabled during those checks, and the mobile drawer is checked for viewport height and complete navigation. It is a separate manual tier and is never started by `make test` or the commit gate:
 
 ```sh
 ./tests/e2e.sh
 ```
-
-The same test tiers can run after the unit, vet, and vulnerability gate through
-Make variables: `make test BASIC=1 CONTENT_NEGOTIATION=1 INCUS=1 E2E=1`.
 
 Use only the test environments described by AI.md. Do not start `docker/docker-compose.yml` or `docker/docker-compose.dev.yml` during automated testing.
 

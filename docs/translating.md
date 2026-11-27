@@ -6,7 +6,7 @@ Anime uses embedded locale catalogs shared by the server and CLI. The required l
 
 The server resolves language in this order:
 
-1. A supported `?lang=` query value. This selects the language for the request and writes the persistent `lang` cookie.
+1. A supported `?lang=` query value. This selects the language for the request. It writes a persistent `lang` cookie only when the Preferences consent category has been accepted; without consent, it applies to that response only.
 2. A supported `lang` cookie.
 3. The best supported match from `Accept-Language`, including regional fallback such as `fr-CA` to `fr`.
 4. English.
