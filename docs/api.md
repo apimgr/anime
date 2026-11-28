@@ -42,7 +42,7 @@ Successful REST responses use the documented `ok`/`data` envelope, except health
 | GET | `/api/metrics[/prometheus|/grafana|/loki]` | Matching metrics service Bearer token | Compatibility aliases for the metrics endpoints |
 | GET | `/metrics[/prometheus|/grafana|/loki]` | Matching metrics service Bearer token | Root aliases when `server.metrics.root.enabled` is true |
 | GET | `/api/autodiscover` | None | CLI release discovery metadata |
-| GET | `/cli/binaries/{file}` | None | Supported CLI release artifact |
+| GET | `/api/v1/cli/binaries/{file}` | None | Supported CLI release artifact |
 | GET | `/api/v1/debug/{endpoint}` and `/api/debug/{endpoint}` | Operator Bearer | Debug endpoints, only when debug routes are enabled |
 
 The primary token is issued through `POST /api/v1/server/preferences/tokens/primary`. The web-only token actions are `POST /server/preferences/token/{create,restore,forget}` and `/server/preferences/tokens/{id}/{reveal,rotate,revoke}`. These browser actions use the secure owner cookie and CSRF protection; API token actions use Bearer headers. The consent action is `POST /server/consent`. The web page is `/server/preferences/tokens`.

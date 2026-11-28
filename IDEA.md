@@ -140,6 +140,6 @@ Public quote and informational data routes are read-only. Owner-token issuance a
 | GET | `/api/{healthz,swagger}` | None | Compatibility aliases for health JSON and the OpenAPI document. |
 | GET, POST | `/api/graphql` and `/graphql` | None | Compatibility aliases for the read-only GraphQL endpoint. |
 | GET | `/api/autodiscover` | None | Return metadata and checksums for operator-provisioned local CLI release assets. |
-| GET | `/cli/binaries/{file}` | None | Serve a supported CLI release artifact from the configured local asset directory; downloads are checksum-verified by the client. |
+| GET | `/api/v1/cli/binaries/{file}` | None | Serve a supported CLI release artifact from the configured local asset directory; downloads are checksum-verified by the client. |
 
 The browser pages are `/`, `/quotes`, `/server/about`, `/server/help`, `/server/help/mcp`, `/server/healthz`, `/server/preferences`, `/server/preferences/sync`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security`, `/server/security/policy`, `/server/security/thanks`, `/server/docs/swagger`, and `/server/docs/graphql`. `/server/preferences/sync` exports preferences; `/server/preferences/sync/import` is an action route that applies valid values and redirects. `/server` redirects to `/server/about`. Static/PWA routes are `/static/*`, `/robots.txt`, `/security.txt`, `/.well-known/security.txt`, `/manifest.json`, and `/sw.js`.

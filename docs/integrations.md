@@ -5,7 +5,7 @@
 - REST API and OpenAPI JSON: `/api/v1/server/swagger` (`/api/swagger` alias); see [API reference](api.md).
 - Read-only GraphQL: `/api/v1/server/graphql` (`/api/graphql` and `/graphql` aliases).
 - MCP Streamable HTTP: `/api/v1/server/mcp` (`/api/mcp` and `/mcp` aliases). Each request requires an owner Bearer token. The guide at `/server/help/mcp` describes supported clients and tools.
-- CLI discovery: `/api/autodiscover` reports `cli_versions` and `cli_min_version` in the standard `ok`/`data` envelope; `/cli/binaries/{file}` serves a supported CLI artifact. The CLI checks discovery on each invocation, downloads updates over HTTPS, verifies SHA-256, atomically replaces its executable, and restarts it. Use `anime-cli --update check` to check explicitly or `anime-cli --update yes` to install.
+- CLI discovery: `/api/autodiscover` reports `cli_versions` and `cli_min_version` in the standard `ok`/`data` envelope; `/api/v1/cli/binaries/{file}` serves a supported CLI artifact. The CLI checks discovery on each invocation, downloads updates over HTTPS, verifies SHA-256, atomically replaces its executable, and restarts it. Use `anime-cli --update check` to check explicitly or `anime-cli --update yes` to install.
 - Contact and security reporting: `/api/v1/server/contact` and `/api/v1/server/security`; see [Security](security.md).
 
 ## Discovery files
