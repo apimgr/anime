@@ -9,6 +9,9 @@ Successful REST responses use the documented `ok`/`data` envelope, except health
 | Method | Route | Authentication | Description |
 |---|---|---|---|
 | GET | `/api/v1` and `/api` | None | API route index |
+| GET | `/api/v1/server/swagger` and `/api/swagger` | None | OpenAPI 3.1 JSON document |
+| GET, POST | `/api/v1/server/graphql`, `/api/graphql`, and `/graphql` | None | Read-only GraphQL query interface |
+| POST | `/api/v1/server/mcp`, `/api/mcp`, and `/mcp` | Owner Bearer | MCP Streamable HTTP JSON-RPC endpoint |
 | GET | `/api/v1/random` | None | One random quote |
 | GET | `/api/v1/quotes` | None | List and search quotes using optional `q`, `anime`, and `character` filters |
 | GET | `/api/v1/stats` | None | Runtime and collection statistics |
@@ -40,8 +43,9 @@ Successful REST responses use the documented `ok`/`data` envelope, except health
 | GET | `/metrics[/prometheus|/grafana|/loki]` | Matching metrics service Bearer token | Root aliases when `server.metrics.root.enabled` is true |
 | GET | `/api/autodiscover` | None | CLI release discovery metadata |
 | GET | `/cli/binaries/{file}` | None | Supported CLI release artifact |
+| GET | `/api/v1/debug/{endpoint}` and `/api/debug/{endpoint}` | Operator Bearer | Debug endpoints, only when debug routes are enabled |
 
-The primary token is issued through `POST /api/v1/server/preferences/tokens/primary`. The web-only restore and forget actions are `POST /server/preferences/token/restore` and `POST /server/preferences/token/forget`. The web page is `/server/preferences/tokens`.
+The primary token is issued through `POST /api/v1/server/preferences/tokens/primary`. The web-only token actions are `POST /server/preferences/token/{create,restore,forget}` and `/server/preferences/tokens/{id}/{reveal,rotate,revoke}`. These browser actions use the secure owner cookie and CSRF protection; API token actions use Bearer headers. The consent action is `POST /server/consent`. The web page is `/server/preferences/tokens`.
 
 ## Quote filters and formats
 
@@ -53,6 +57,6 @@ GraphQL supports `randomQuote { anime character quote }` and `quotes(q: ..., ani
 
 ## Browser pages
 
-The browser surface includes the quote pages, `/server/about`, `/server/help`, `/server/help/mcp`, `/server/healthz`, `/server/preferences` and its registered sub-pages, `/server/contact`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security` and its policy/thanks pages, and the Swagger and GraphQL explorers. The `/server` route redirects to `/server/about`. State-changing token actions and preference import routes are actions, not pages.
+The browser surface includes the quote pages, `/server/about`, `/server/help`, `/server/help/mcp`, `/server/healthz`, `/server/preferences` and its registered sub-pages, `/server/contact`, `/server/privacy`, `/server/terms`, `/server/dpo`, `/server/security` and its policy/thanks pages, `/server/security/report/{tracking_id}` (private report status, requiring its single-use status token), and the Swagger and GraphQL explorers. The `/server` route redirects to `/server/about`. State-changing token and consent routes and preference import routes are actions, not pages.
 
 The CLI release discovery endpoint reads the operator-provisioned artifacts under `{data_dir}/cli`, including `version.txt` and `sha256.txt`. The binary endpoint serves a supported artifact only when its SHA-256 matches the manifest; the CLI verifies the same checksum after download. Server self-updates use GitHub Releases separately. Ordinary quote and health requests do not contact GitHub.
